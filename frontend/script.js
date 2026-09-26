@@ -1,4 +1,7 @@
-```javascript
+// =====================================================
+// ROHITH MINI MART - CUSTOMER FRONTEND
+// =====================================================
+
 const API_URL = "https://shyam-mini-mart.onrender.com/api/products";
 const ORDERS_API_URL = "https://shyam-mini-mart.onrender.com/api/orders";
 const SHOP_STATUS_API_URL = "https://shyam-mini-mart.onrender.com/api/shop-status";
@@ -11,56 +14,24 @@ let lastOrderId = null;
 
 
 // =====================================================
-// INITIAL LOAD
+// START
 // =====================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   loadProducts();
   loadShopStatus();
   updateCartCount();
+
+  const searchInput = document.getElementById("productSearch");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", searchProducts);
+  }
 });
 
 
 // =====================================================
-// SHOP STATUS
-// =====================================================
-
-async function loadShopStatus() {
-  try {
-    const response = await fetch(SHOP_STATUS_API_URL);
-    const data = await response.json();
-
-    shopOpen = data.shop_open === true;
-
-    updateCustomerShopStatus();
-  } catch (error) {
-    console.error("Failed to load shop status:", error);
-
-    shopOpen = true;
-    updateCustomerShopStatus();
-  }
-}
-
-
-function updateCustomerShopStatus() {
-  const statusElement = document.getElementById("shopStatus");
-
-  if (!statusElement) return;
-
-  if (shopOpen) {
-    statusElement.textContent = "🟢 Shop Open";
-    statusElement.classList.remove("closed");
-    statusElement.classList.add("open");
-  } else {
-    statusElement.textContent = "🔴 Shop Closed";
-    statusElement.classList.remove("open");
-    statusElement.classList.add("closed");
-  }
-}
-
-
-// =====================================================
-// PRODUCTS
+// LOAD PRODUCTS
 // =====================================================
 
 async function loadProducts() {
@@ -68,11 +39,13 @@ async function loadProducts() {
   const resultText = document.getElementById("productResultText");
 
   try {
-    productGrid.innerHTML = `
-      <div class="loading">
-        Loading products...
-      </div>
-    `;
+    if (productGrid) {
+      productGrid.innerHTML = `
+        <div class="loading">
+          Loading products...
+        </div>
+      `;
+    }
 
     const response = await fetch(API_URL);
 
@@ -102,6 +75,10 @@ async function loadProducts() {
   }
 }
 
+
+// =====================================================
+// DISPLAY PRODUCTS
+// =====================================================
 
 function displayProducts(productList) {
   const productGrid = document.getElementById("productGrid");
@@ -226,7 +203,7 @@ function searchProducts() {
 
   const searchText = searchInput.value.toLowerCase().trim();
 
-  let filteredProducts = products.filter(product => {
+  const filteredProducts = products.filter(product => {
 
     const name = String(product.name || "").toLowerCase();
     const category = String(product.category || "").toLowerCase();
@@ -319,6 +296,7 @@ function addToCart(productId) {
 
 
 function removeFromCart(productId) {
+
   cart = cart.filter(
     item => Number(item.id) !== Number(productId)
   );
@@ -447,7 +425,6 @@ function renderCart() {
     return;
   }
 
-
   cartItems.innerHTML = cart.map(item => {
 
     const itemTotal =
@@ -457,7 +434,6 @@ function renderCart() {
       <div class="cart-item">
 
         <div class="cart-item-image">
-
           ${
             item.image
               ? `
@@ -468,7 +444,6 @@ function renderCart() {
               `
               : "🛒"
           }
-
         </div>
 
         <div class="cart-item-info">
@@ -531,7 +506,6 @@ function renderCart() {
     `;
   }).join("");
 
-
   if (cartTotal) {
     cartTotal.textContent =
       calculateCartTotal().toFixed(2);
@@ -551,37 +525,31 @@ function openCheckout() {
   }
 
   if (!shopOpen) {
-    alert("Sorry, the shop is currently closed.");
+    alert("Shop is currently closed.");
     return;
   }
 
-  closeCart();
+  const overlay = document.getElementById("checkoutOverlay");
+  const checkoutTotal = document.getElementById("checkoutTotal");
 
-  const checkoutOverlay =
-    document.getElementById("checkoutOverlay");
-
-  const checkoutTotal =
-    document.getElementById("checkoutTotal");
+  if (!overlay) return;
 
   if (checkoutTotal) {
     checkoutTotal.textContent =
       calculateCartTotal().toFixed(2);
   }
 
-  if (checkoutOverlay) {
-    checkoutOverlay.classList.add("active");
-  }
+  overlay.classList.add("active");
 }
 
 
 function closeCheckout() {
 
-  const checkoutOverlay =
-    document.getElementById("checkoutOverlay");
+  const overlay = document.getElementById("checkoutOverlay");
 
-  if (!checkoutOverlay) return;
+  if (!overlay) return;
 
-  checkoutOverlay.classList.remove("active");
+  overlay.classList.remove("active");
 }
 
 
@@ -599,7 +567,9 @@ function closeCheckoutOutside(event) {
 
 async function placeOrder(event) {
 
-  event.preventDefault();
+  if (event) {
+    event.preventDefault();
+  }
 
   if (cart.length === 0) {
     alert("Your cart is empty.");
@@ -607,134 +577,92 @@ async function placeOrder(event) {
   }
 
   if (!shopOpen) {
-    alert("Sorry, the shop is currently closed.");
+    alert("Shop is currently closed.");
     return;
   }
-
 
   const customerName =
     document.getElementById("customerName")?.value.trim();
 
-  const phone =
+  const customerPhone =
     document.getElementById("customerPhone")?.value.trim();
 
-  const address =
+  const customerAddress =
     document.getElementById("customerAddress")?.value.trim();
 
   const paymentMethod =
     document.getElementById("paymentMethod")?.value;
 
-
-  if (!customerName || !phone || !address || !paymentMethod) {
-    alert("Please fill in all checkout details.");
+  if (!customerName) {
+    alert("Please enter your name.");
     return;
   }
 
+  if (!customerPhone) {
+    alert("Please enter your phone number.");
+    return;
+  }
 
-  if (!/^[0-9]{10}$/.test(phone)) {
+  if (!/^[0-9]{10}$/.test(customerPhone)) {
     alert("Please enter a valid 10-digit phone number.");
     return;
   }
 
+  if (!customerAddress) {
+    alert("Please enter your delivery address.");
+    return;
+  }
+
+  if (!paymentMethod) {
+    alert("Please select a payment method.");
+    return;
+  }
+
+  const orderItems = cart.map(item => ({
+    product_id: Number(item.id),
+    name: String(item.name),
+    price: Number(item.price),
+    quantity: Number(item.quantity),
+    size: String(item.size || "")
+  }));
+
+  const totalAmount = calculateCartTotal();
 
   const orderData = {
-
-    customer_name: String(customerName),
-
-    phone: String(phone),
-
-    address: String(address),
-
-    payment_method: String(paymentMethod),
-
-    total: Number(
-      calculateCartTotal().toFixed(2)
-    ),
-
-    items: cart.map(item => ({
-      product_id: Number(item.id),
-      product_name: String(item.name),
-      quantity: Number(item.quantity),
-      price: Number(item.price)
-    }))
-
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    customer_address: customerAddress,
+    payment_method: paymentMethod,
+    items: orderItems,
+    total_amount: totalAmount
   };
-
-
-  const placeOrderButton =
-    document.querySelector(
-      "#checkoutForm .place-order-btn"
-    );
-
 
   try {
 
-    if (placeOrderButton) {
-      placeOrderButton.disabled = true;
-      placeOrderButton.textContent = "Placing Order...";
-    }
-
-
-    console.log("Sending order:", orderData);
-
-
-    const response = await fetch(
-      ORDERS_API_URL,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify(orderData)
-      }
-    );
-
-
-    const responseText =
-      await response.text();
-
-    let data;
-
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      data = {
-        message:
-          responseText || "Unknown server response"
-      };
-    }
-
+    const response = await fetch(ORDERS_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(orderData)
+    });
 
     if (!response.ok) {
-
-      throw new Error(
-        data.message ||
-        `Order failed. Server returned ${response.status}`
-      );
-
+      throw new Error("Failed to place order");
     }
 
-
-    console.log(
-      "Order placed successfully:",
-      data
-    );
-
+    const data = await response.json();
 
     lastOrderId =
       data.order_id ||
-      data.order?.id ||
-      null;
-
+      data.id ||
+      data.orderId;
 
     cart = [];
 
     updateCartCount();
-
     closeCheckout();
-
+    closeCart();
 
     const successOverlay =
       document.getElementById("successOverlay");
@@ -742,77 +670,72 @@ async function placeOrder(event) {
     const successOrderId =
       document.getElementById("successOrderId");
 
-
     if (successOrderId) {
       successOrderId.textContent =
-        lastOrderId || "-";
+        lastOrderId ? `Order ID: ${lastOrderId}` : "Order placed successfully";
     }
-
 
     if (successOverlay) {
       successOverlay.classList.add("active");
+    } else {
+      alert(
+        lastOrderId
+          ? `Order placed successfully! Order ID: ${lastOrderId}`
+          : "Order placed successfully!"
+      );
     }
 
+    const form =
+      document.getElementById("checkoutForm");
 
-    document.getElementById("checkoutForm")?.reset();
-
+    if (form) {
+      form.reset();
+    }
 
   } catch (error) {
 
-    console.error("PLACE ORDER ERROR:", error);
+    console.error("Order error:", error);
 
     alert(
-      error.message ||
-      "Unable to place order. Please try again."
+      "Unable to place order right now. Please try again."
     );
-
-  } finally {
-
-    if (placeOrderButton) {
-      placeOrderButton.disabled = false;
-      placeOrderButton.textContent = "Place Order";
-    }
-
   }
 }
 
 
 // =====================================================
-// ORDER SUCCESS
+// SUCCESS
 // =====================================================
 
 function closeSuccess() {
 
-  const successOverlay =
+  const overlay =
     document.getElementById("successOverlay");
 
-  if (!successOverlay) return;
+  if (!overlay) return;
 
-  successOverlay.classList.remove("active");
+  overlay.classList.remove("active");
 }
 
 
 function trackSuccessfulOrder() {
 
+  closeSuccess();
+
   if (!lastOrderId) {
-    alert("Order ID is not available.");
+    openTrackOrder();
     return;
   }
 
-  closeSuccess();
-
-  const trackInput =
+  const input =
     document.getElementById("trackOrderId");
 
-  if (trackInput) {
-    trackInput.value = lastOrderId;
+  if (input) {
+    input.value = lastOrderId;
   }
 
   openTrackOrder();
-
-  setTimeout(() => {
-    trackOrder();
-  }, 100);
+  trackOrder();
 }
 
 
@@ -827,15 +750,7 @@ function openTrackOrder() {
 
   if (!overlay) return;
 
-  const result =
-    document.getElementById("trackingResult");
-
-  if (result) {
-    result.innerHTML = "";
-  }
-
   overlay.classList.add("active");
-
 }
 
 
@@ -858,12 +773,7 @@ function closeTrackOrderOutside(event) {
 }
 
 
-async function trackOrder(event) {
-
-  if (event) {
-    event.preventDefault();
-  }
-
+async function trackOrder() {
 
   const input =
     document.getElementById("trackOrderId");
@@ -871,106 +781,43 @@ async function trackOrder(event) {
   const result =
     document.getElementById("trackingResult");
 
-
   if (!input || !result) return;
 
-
-  const orderId =
-    input.value.trim();
-
+  const orderId = input.value.trim();
 
   if (!orderId) {
-    result.innerHTML = `
-      <div class="tracking-error">
-        Please enter your Order ID.
-      </div>
-    `;
-
+    alert("Please enter your order ID.");
     return;
   }
-
-
-  if (!/^[0-9]+$/.test(orderId)) {
-
-    result.innerHTML = `
-      <div class="tracking-error">
-        Please enter a valid Order ID.
-      </div>
-    `;
-
-    return;
-  }
-
 
   result.innerHTML = `
-    <div class="tracking-loading">
-      Checking your order...
+    <div class="loading">
+      Loading order...
     </div>
   `;
-
 
   try {
 
     const response =
-      await fetch(
-        `${ORDERS_API_URL}/${Number(orderId)}`
-      );
-
-
-    const responseText =
-      await response.text();
-
-
-    let data;
-
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      data = {};
-    }
-
+      await fetch(`${ORDERS_API_URL}/${encodeURIComponent(orderId)}`);
 
     if (!response.ok) {
-
-      throw new Error(
-        data.message ||
-        "Order not found."
-      );
-
+      throw new Error("Order not found");
     }
 
-
     const order =
-      data.order || data;
-
+      await response.json();
 
     renderOrderTracking(order);
 
-
   } catch (error) {
 
-    console.error(
-      "TRACK ORDER ERROR:",
-      error
-    );
-
+    console.error("Tracking error:", error);
 
     result.innerHTML = `
-      <div class="tracking-error">
-
-        <div class="tracking-error-icon">
-          ❌
-        </div>
-
-        <h3>Order Not Found</h3>
-
-        <p>
-          ${escapeHTML(
-            error.message ||
-            "Please check your Order ID and try again."
-          )}
-        </p>
-
+      <div class="empty-message">
+        <h3>Order not found</h3>
+        <p>Please check your Order ID and try again.</p>
       </div>
     `;
   }
@@ -988,220 +835,160 @@ function renderOrderTracking(order) {
 
   if (!result) return;
 
-
   const status =
-    String(order.status || "pending").toLowerCase();
-
+    String(
+      order.status ||
+      order.order_status ||
+      "pending"
+    ).toLowerCase();
 
   const statusLabels = {
-
-    pending: {
-      title: "Order Received",
-      icon: "📝"
-    },
-
-    confirmed: {
-      title: "Order Confirmed",
-      icon: "✅"
-    },
-
-    preparing: {
-      title: "Preparing",
-      icon: "👨‍🍳"
-    },
-
-    out_for_delivery: {
-      title: "Out for Delivery",
-      icon: "🚚"
-    },
-
-    delivered: {
-      title: "Delivered",
-      icon: "🎉"
-    },
-
-    cancelled: {
-      title: "Order Cancelled",
-      icon: "❌"
-    }
-
+    pending: "Order Placed",
+    confirmed: "Order Confirmed",
+    preparing: "Preparing Order",
+    out_for_delivery: "Out for Delivery",
+    delivered: "Delivered",
+    cancelled: "Cancelled"
   };
 
-
-  if (status === "cancelled") {
-
-    result.innerHTML = `
-      <div class="tracking-order">
-
-        <div class="tracking-order-header">
-
-          <div>
-            <span>Order ID</span>
-            <strong>#${Number(order.id)}</strong>
-          </div>
-
-          <span class="tracking-cancelled">
-            ❌ Cancelled
-          </span>
-
-        </div>
-
-
-        <div class="tracking-cancelled-box">
-
-          <div class="tracking-status-icon">
-            ❌
-          </div>
-
-          <div>
-            <h3>Order Cancelled</h3>
-            <p>
-              This order has been cancelled.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-    `;
-
-    return;
-  }
-
-
-  const steps = [
-    {
-      key: "pending",
-      title: "Order Received",
-      description: "We received your order.",
-      icon: "📝"
-    },
-    {
-      key: "confirmed",
-      title: "Order Confirmed",
-      description: "Your order has been confirmed.",
-      icon: "✅"
-    },
-    {
-      key: "preparing",
-      title: "Preparing",
-      description: "Your items are being prepared.",
-      icon: "👨‍🍳"
-    },
-    {
-      key: "out_for_delivery",
-      title: "Out for Delivery",
-      description: "Your order is on the way.",
-      icon: "🚚"
-    },
-    {
-      key: "delivered",
-      title: "Delivered",
-      description: "Your order has been delivered.",
-      icon: "🎉"
-    }
-  ];
-
-
-  const statusIndex =
-    steps.findIndex(
-      step => step.key === status
-    );
-
+  const statusText =
+    statusLabels[status] ||
+    status.replaceAll("_", " ");
 
   result.innerHTML = `
-    <div class="tracking-order">
+    <div class="tracking-card">
 
-      <div class="tracking-order-header">
+      <h3>
+        Order #${escapeHTML(
+          String(order.id || order.order_id || "")
+        )}
+      </h3>
 
-        <div>
-          <span>Order ID</span>
-          <strong>#${Number(order.id)}</strong>
-        </div>
-
-        <div class="tracking-current-status">
-
-          ${
-            statusLabels[status]?.icon || "📦"
-          }
-
-          ${
-            statusLabels[status]?.title ||
-            "Order Status"
-          }
-
-        </div>
-
+      <div class="tracking-status">
+        <strong>
+          ${escapeHTML(statusText)}
+        </strong>
       </div>
 
+      ${
+        order.customer_name
+          ? `
+            <p>
+              <strong>Name:</strong>
+              ${escapeHTML(order.customer_name)}
+            </p>
+          `
+          : ""
+      }
 
-      <div class="tracking-timeline">
+      ${
+        order.customer_phone
+          ? `
+            <p>
+              <strong>Phone:</strong>
+              ${escapeHTML(order.customer_phone)}
+            </p>
+          `
+          : ""
+      }
 
-        ${steps.map((step, index) => {
+      ${
+        order.customer_address
+          ? `
+            <p>
+              <strong>Address:</strong>
+              ${escapeHTML(order.customer_address)}
+            </p>
+          `
+          : ""
+      }
 
-          let stepClass = "";
+      ${
+        order.payment_method
+          ? `
+            <p>
+              <strong>Payment:</strong>
+              ${escapeHTML(order.payment_method)}
+            </p>
+          `
+          : ""
+      }
 
-          if (statusIndex > index) {
-            stepClass = "completed";
-          } else if (statusIndex === index) {
-            stepClass = "current";
-          }
-
-          return `
-            <div class="tracking-step ${stepClass}">
-
-              <div class="tracking-step-icon">
-                ${step.icon}
-              </div>
-
-              <div class="tracking-step-content">
-
-                <h4>
-                  ${step.title}
-                </h4>
-
-                <p>
-                  ${step.description}
-                </p>
-
-              </div>
-
-            </div>
-          `;
-
-        }).join("")}
-
-      </div>
-
-
-      <div class="tracking-order-info">
-
-        ${
-          order.customer_name
-            ? `
-              <div>
-                <span>Customer</span>
-                <strong>
-                  ${escapeHTML(
-                    String(order.customer_name)
-                  )}
-                </strong>
-              </div>
-            `
-            : ""
-        }
-
-        <div>
-          <span>Total</span>
-          <strong>
-            ₹${Number(order.total || 0).toFixed(2)}
-          </strong>
-        </div>
-
-      </div>
+      ${
+        order.total_amount !== undefined
+          ? `
+            <p>
+              <strong>Total:</strong>
+              ₹${Number(order.total_amount).toFixed(2)}
+            </p>
+          `
+          : ""
+      }
 
     </div>
   `;
+}
+
+
+// =====================================================
+// SHOP STATUS
+// =====================================================
+
+async function loadShopStatus() {
+
+  try {
+
+    const response =
+      await fetch(SHOP_STATUS_API_URL);
+
+    if (!response.ok) {
+      throw new Error("Failed to load shop status");
+    }
+
+    const data =
+      await response.json();
+
+    shopOpen = data.shop_open === true;
+
+    updateShopStatusUI();
+
+  } catch (error) {
+
+    console.error(
+      "Shop status error:",
+      error
+    );
+
+    shopOpen = true;
+    updateShopStatusUI();
+  }
+}
+
+
+function updateShopStatusUI() {
+
+  const statusElements =
+    document.querySelectorAll(
+      ".shop-status, #shopStatus"
+    );
+
+  statusElements.forEach(element => {
+
+    element.textContent =
+      shopOpen
+        ? "Mini Mart Open"
+        : "Mini Mart Closed";
+
+    element.classList.toggle(
+      "open",
+      shopOpen
+    );
+
+    element.classList.toggle(
+      "closed",
+      !shopOpen
+    );
+  });
 }
 
 
@@ -1211,27 +998,10 @@ function renderOrderTracking(order) {
 
 function escapeHTML(value) {
 
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
-
-
-// =====================================================
-// ESC KEY
-// =====================================================
-
-document.addEventListener("keydown", event => {
-
-  if (event.key !== "Escape") return;
-
-  closeCart();
-  closeCheckout();
-  closeSuccess();
-  closeTrackOrder();
-
-});
-```
