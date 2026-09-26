@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Rohith Mini Mart</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ================= HEADER ================= -->
+  <header class="main-header">
+    <div class="header-inner">
+
+      <div class="logo">
+        <span class="logo-icon">🛒</span>
+        <div>
+          <h1>Rohith Mini Mart</h1>
+          <p>Your daily essentials</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="track-btn" onclick="openTrackOrder()">
+          📦 Track Order
+        </button>
+
+        <button class="cart-btn" onclick="openCart()">
+          🛒 Cart
+          <span id="cartCount">0</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="hero-content">
+
+      <h2>Shop your daily essentials</h2>
+
+      <p>
+        Groceries, dairy, snacks, drinks and household products
+        delivered to your doorstep.
+      </p>
+
+      <div class="shop-status-wrapper">
+        <span id="shopStatus" class="shop-status open">
+          🟢 Shop Open
+        </span>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ================= SEARCH ================= -->
+  <section class="shop-section">
+
+    <div class="search-box">
+      <input
+        type="text"
+        id="productSearch"
+        placeholder="🔍 Search for products..."
+        oninput="searchProducts()"
+      />
+    </div>
+
+
+    <!-- ================= CATEGORIES ================= -->
+    <div class="categories">
+
+      <button
+        class="category-btn active"
+        onclick="filterCategory('all', this)"
+      >
+        All
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('groceries', this)"
+      >
+        🛒 Groceries
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('dairy', this)"
+      >
+        🥛 Dairy
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('snacks', this)"
+      >
+        🍪 Snacks
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('drinks', this)"
+      >
+        🥤 Drinks
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('personal', this)"
+      >
+        🧴 Personal Care
+      </button>
+
+      <button
+        class="category-btn"
+        onclick="filterCategory('household', this)"
+      >
+        🏠 Household
+      </button>
+
+    </div>
+
+
+    <!-- ================= PRODUCTS ================= -->
+    <div class="products-header">
+      <h2>Products</h2>
+      <p id="productResultText">Loading products...</p>
+    </div>
+
+    <div id="productGrid" class="product-grid"></div>
+
+  </section>
+
+
+  <!-- ================= CART OVERLAY ================= -->
+  <div
+    id="cartOverlay"
+    class="overlay"
+    onclick="closeCartOutside(event)"
+  >
+
+    <div class="side-panel cart-panel">
+
+      <div class="panel-header">
+        <h2>🛒 Your Cart</h2>
+
+        <button
+          class="close-btn"
+          onclick="closeCart()"
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+
+      <div id="cartItems" class="cart-items">
+        <!-- Cart items appear here -->
+      </div>
+
+      <div class="cart-footer">
+
+        <div class="cart-total-row">
+          <span>Total</span>
+          <strong>
+            ₹<span id="cartTotal">0.00</span>
+          </strong>
+        </div>
+
+        <button
+          class="checkout-btn"
+          onclick="openCheckout()"
+          type="button"
+        >
+          Proceed to Checkout
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= CHECKOUT OVERLAY ================= -->
+  <div
+    id="checkoutOverlay"
+    class="overlay"
+    onclick="closeCheckoutOutside(event)"
+  >
+
+    <div class="checkout-panel">
+
+      <div class="panel-header">
+
+        <h2>🧾 Checkout</h2>
+
+        <button
+          class="close-btn"
+          onclick="closeCheckout()"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <form id="checkoutForm" onsubmit="placeOrder(event)">
+
+        <div class="form-group">
+          <label for="customerName">
+            Full Name
+          </label>
+
+          <input
+            type="text"
+            id="customerName"
+            placeholder="Enter your name"
+            required
+          />
+        </div>
+
+
+        <div class="form-group">
+          <label for="customerPhone">
+            Phone Number
+          </label>
+
+          <input
+            type="tel"
+            id="customerPhone"
+            placeholder="Enter 10-digit mobile number"
+            maxlength="10"
+            pattern="[0-9]{10}"
+            required
+          />
+        </div>
+
+
+        <div class="form-group">
+          <label for="customerAddress">
+            Delivery Address
+          </label>
+
+          <textarea
+            id="customerAddress"
+            rows="4"
+            placeholder="Enter your complete delivery address"
+            required
+          ></textarea>
+        </div>
+
+
+        <div class="form-group">
+          <label for="paymentMethod">
+            Payment Method
+          </label>
+
+          <select id="paymentMethod" required>
+
+            <option value="">
+              Select payment method
+            </option>
+
+            <option value="cod">
+              Cash on Delivery
+            </option>
+
+            <option value="upi">
+              UPI
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="checkout-total">
+
+          <span>Order Total</span>
+
+          <strong>
+            ₹<span id="checkoutTotal">0.00</span>
+          </strong>
+
+        </div>
+
+
+        <button
+          class="place-order-btn"
+          type="submit"
+        >
+          Place Order
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= ORDER SUCCESS ================= -->
+  <div
+    id="successOverlay"
+    class="overlay"
+  >
+
+    <div class="success-panel">
+
+      <div class="success-icon">
+        ✓
+      </div>
+
+      <h2>Order Placed Successfully!</h2>
+
+      <p>
+        Thank you for shopping with Rohith Mini Mart.
+      </p>
+
+      <div class="order-id-box">
+
+        <span>Your Order ID</span>
+
+        <strong id="successOrderId">
+          -
+        </strong>
+
+      </div>
+
+
+      <div class="success-actions">
+
+        <button
+          class="track-success-btn"
+          onclick="trackSuccessfulOrder()"
+          type="button"
+        >
+          📦 Track Order
+        </button>
+
+        <button
+          class="continue-btn"
+          onclick="closeSuccess()"
+          type="button"
+        >
+          Continue Shopping
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= TRACK ORDER OVERLAY ================= -->
+  <div
+    id="trackOrderOverlay"
+    class="overlay"
+    onclick="closeTrackOrderOutside(event)"
+  >
+
+    <div class="tracking-panel">
+
+      <div class="panel-header">
+
+        <h2>📦 Track Your Order</h2>
+
+        <button
+          class="close-btn"
+          onclick="closeTrackOrder()"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="tracking-content">
+
+        <p class="tracking-description">
+          Enter your Order ID to check the current status of your order.
+        </p>
+
+
+        <form
+          id="trackOrderForm"
+          onsubmit="trackOrder(event)"
+        >
+
+          <div class="tracking-input-row">
+
+            <input
+              type="number"
+              id="trackOrderId"
+              placeholder="Enter Order ID"
+              min="1"
+              required
+            />
+
+            <button
+              type="submit"
+              class="track-submit-btn"
+            >
+              Track
+            </button>
+
+          </div>
+
+        </form>
+
+
+        <!-- Tracking result -->
+        <div id="trackingResult"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+
+    <div class="footer-content">
+
+      <div>
+        <h3>Rohith Mini Mart</h3>
+        <p>
+          Your local store for everyday essentials.
+        </p>
+      </div>
+
+      <div>
+        <p>🛒 Quality Products</p>
+        <p>🚚 Home Delivery</p>
+        <p>📦 Easy Ordering</p>
+      </div>
+
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Rohith Mini Mart. All rights reserved.
+    </div>
+
+  </footer>
+
+
+  <!-- ================= JAVASCRIPT ================= -->
+  <script src="script.js"></script>
+
+</body>
+</html>
