@@ -1,6 +1,7 @@
-const API_URL = "http://localhost:3000/api/products";
-const ORDERS_API_URL = "http://localhost:3000/api/orders";
-const SHOP_STATUS_API_URL = "http://localhost:3000/api/shop-status";
+```javascript
+const API_URL = "https://shyam-mini-mart.onrender.com/api/products";
+const ORDERS_API_URL = "https://shyam-mini-mart.onrender.com/api/orders";
+const SHOP_STATUS_API_URL = "https://shyam-mini-mart.onrender.com/api/shop-status";
 
 let products = [];
 let cart = [];
@@ -94,7 +95,7 @@ async function loadProducts() {
       productGrid.innerHTML = `
         <div class="empty-message">
           <h3>Unable to load products</h3>
-          <p>Please make sure the backend is running.</p>
+          <p>Please try again later.</p>
         </div>
       `;
     }
@@ -1233,3 +1234,4 @@ document.addEventListener("keydown", event => {
   closeTrackOrder();
 
 });
+```
