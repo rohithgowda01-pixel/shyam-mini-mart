@@ -1,2209 +1,1660 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const Database = require("better-sqlite3");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-require("dotenv").config();
 
 const app = express();
 
-const PORT = Number(process.env.PORT) || 3000;
-
-const ADMIN_USERNAME =
-  process.env.ADMIN_USERNAME || "admin";
-
-const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD || "admin123";
+const PORT = process.env.PORT || 3000;
 
 const JWT_SECRET =
-  process.env.JWT_SECRET || "rohith_mini_mart_secret_change_me";
+    process.env.JWT_SECRET || "rohith-mini-mart-secret-2026";
+
+const ADMIN_USERNAME =
+    process.env.ADMIN_USERNAME || "admin";
+
+const ADMIN_PASSWORD =
+    process.env.ADMIN_PASSWORD || "admin123";
 
 
-// =========================
-// MIDDLEWARE
-// =========================
+/* =========================================================
+   MIDDLEWARE
+========================================================= */
 
 app.use(cors());
 
-app.use(
-  express.json({
-    limit: "5mb"
-  })
-);
+app.use(express.json());
+
+app.use(express.urlencoded({
+    extended: true
+}));
 
 
-// =========================
-// DATABASE
-// =========================
+/* =========================================================
+   DATABASE
+========================================================= */
 
-const db = new Database("database.db");
+const dbPath = path.join(__dirname, "database.db");
+
+const db = new Database(dbPath);
 
 db.pragma("foreign_keys = ON");
 
 
-// =========================
-// TABLES
-// =========================
+/* =========================================================
+   CREATE TABLES
+========================================================= */
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    size TEXT,
-    price REAL NOT NULL DEFAULT 0,
-    category TEXT,
-    image TEXT,
-    stock TEXT DEFAULT 'available',
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`).run();
+db.exec(`
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        size TEXT DEFAULT '',
+        price REAL NOT NULL,
+        category TEXT DEFAULT 'Other',
+        image TEXT DEFAULT '',
+        stock TEXT DEFAULT 'available',
+        description TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_name TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        address TEXT DEFAULT '',
+        total REAL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    address TEXT NOT NULL,
-    payment_method TEXT NOT NULL,
-    total REAL NOT NULL,
-    status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`).run();
+    CREATE TABLE IF NOT EXISTS order_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        product_id INTEGER,
+        product_name TEXT NOT NULL,
+        size TEXT DEFAULT '',
+        price REAL DEFAULT 0,
+        quantity INTEGER DEFAULT 1,
+        FOREIGN KEY(order_id)
+            REFERENCES orders(id)
+            ON DELETE CASCADE
+    );
 
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS order_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER NOT NULL,
-    product_id INTEGER,
-    product_name TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
-    price REAL NOT NULL,
-    FOREIGN KEY (order_id)
-      REFERENCES orders(id)
-      ON DELETE CASCADE
-  )
-`).run();
-
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  )
-`).run();
+    CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY,
+        shop_open INTEGER DEFAULT 1
+    );
+`);
 
 
-// =========================
-// DEFAULT SHOP SETTINGS
-// =========================
+/* =========================================================
+   DEFAULT SHOP STATUS
+========================================================= */
 
-const existingShopStatus =
-  db
-    .prepare(
-      "SELECT value FROM settings WHERE key = ?"
-    )
-    .get("shop_open");
+const settingsExists = db
+    .prepare("SELECT id FROM settings WHERE id = 1")
+    .get();
+
+if (!settingsExists) {
+    db.prepare(`
+        INSERT INTO settings (id, shop_open)
+        VALUES (1, 1)
+    `).run();
+}
 
 
-if (!existingShopStatus) {
+/* =========================================================
+   DEFAULT PRODUCTS
+========================================================= */
 
-  db.prepare(`
-    INSERT INTO settings (key, value)
-    VALUES (?, ?)
-  `).run(
-    "shop_open",
-    "true"
-  );
+const productCount = db
+    .prepare("SELECT COUNT(*) AS count FROM products")
+    .get();
+
+if (productCount.count === 0) {
+
+    const insertProduct = db.prepare(`
+        INSERT INTO products
+        (name, size, price, category, image, stock, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const starterProducts = [
+
+        [
+            "Rice",
+            "1 kg",
+            70,
+            "Groceries",
+            "images/rice.jpg",
+            "available",
+            "Quality rice"
+        ],
+
+        [
+            "Sugar",
+            "1 kg",
+            50,
+            "Groceries",
+            "images/sugar.jpg",
+            "available",
+            "White sugar"
+        ],
+
+        [
+            "Salt",
+            "1 kg",
+            25,
+            "Groceries",
+            "images/salt.jpg",
+            "available",
+            "Table salt"
+        ],
+
+        [
+            "Wheat Flour",
+            "1 kg",
+            55,
+            "Groceries",
+            "images/wheat-flour.jpg",
+            "available",
+            "Wheat flour"
+        ],
+
+        [
+            "Toor Dal",
+            "1 kg",
+            140,
+            "Groceries",
+            "images/toor-dal.jpg",
+            "available",
+            "Toor dal"
+        ],
+
+        [
+            "Cooking Oil",
+            "1 litre",
+            130,
+            "Groceries",
+            "images/cooking-oil.jpg",
+            "available",
+            "Cooking oil"
+        ],
+
+        [
+            "Tea Powder",
+            "250 g",
+            110,
+            "Beverages",
+            "images/tea.jpg",
+            "available",
+            "Tea powder"
+        ],
+
+        [
+            "Biscuits",
+            "Pack",
+            30,
+            "Snacks",
+            "images/biscuits.jpg",
+            "available",
+            "Tasty biscuits"
+        ],
+
+        [
+            "Soap",
+            "1 piece",
+            35,
+            "Personal Care",
+            "images/soap.jpg",
+            "available",
+            "Bath soap"
+        ],
+
+        [
+            "Shampoo",
+            "180 ml",
+            120,
+            "Personal Care",
+            "images/shampoo.jpg",
+            "available",
+            "Shampoo"
+        ],
+
+        [
+            "Toothpaste",
+            "100 g",
+            65,
+            "Personal Care",
+            "images/toothpaste.jpg",
+            "available",
+            "Toothpaste"
+        ],
+
+        [
+            "Detergent Powder",
+            "1 kg",
+            95,
+            "Household",
+            "images/detergent.jpg",
+            "available",
+            "Detergent powder"
+        ],
+
+        [
+            "Garbage Bags",
+            "Pack",
+            50,
+            "Household",
+            "images/garbage-bags.jpg",
+            "available",
+            "Garbage bags"
+        ]
+
+    ];
+
+    const insertMany = db.transaction(() => {
+
+        for (const product of starterProducts) {
+            insertProduct.run(...product);
+        }
+
+    });
+
+    insertMany();
+}
+
+
+/* =========================================================
+   HELPER FUNCTIONS
+========================================================= */
+
+function sendError(res, status, message) {
+
+    return res.status(status).json({
+        success: false,
+        message: message
+    });
 
 }
 
 
-// =========================
-// ADMIN PASSWORD HASH
-// =========================
-//
-// The password comes from .env.
-// It is hashed in memory so we can
-// use bcrypt for password checking.
-//
-// Do not store this hash in the frontend.
-//
+function createToken(username) {
 
-const ADMIN_PASSWORD_HASH =
-  bcrypt.hashSync(
-    ADMIN_PASSWORD,
-    10
-  );
+    return jwt.sign(
+        {
+            username: username
+        },
+        JWT_SECRET,
+        {
+            expiresIn: "7d"
+        }
+    );
+
+}
 
 
-// =========================
-// ADMIN AUTHENTICATION
-// =========================
+/* =========================================================
+   ADMIN AUTHENTICATION MIDDLEWARE
+========================================================= */
 
-function authenticateAdmin(req, res, next) {
+function requireAdmin(req, res, next) {
 
-  try {
-
-    const authHeader =
-      req.headers.authorization;
-
+    const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-
-      return res.status(401).json({
-        message: "Admin authentication required."
-      });
-
+        return sendError(
+            res,
+            401,
+            "Admin login required"
+        );
     }
 
+    const parts = authHeader.split(" ");
 
     if (
-      !authHeader.startsWith("Bearer ")
+        parts.length !== 2 ||
+        parts[0] !== "Bearer"
     ) {
-
-      return res.status(401).json({
-        message: "Invalid authentication format."
-      });
-
+        return sendError(
+            res,
+            401,
+            "Invalid authorization"
+        );
     }
 
+    const token = parts[1];
 
-    const token =
-      authHeader.substring(7);
+    try {
 
+        const decoded = jwt.verify(
+            token,
+            JWT_SECRET
+        );
 
-    if (!token) {
+        req.admin = decoded;
 
-      return res.status(401).json({
-        message: "Authentication token missing."
-      });
+        next();
 
-    }
+    } catch (error) {
 
-
-    const decoded =
-      jwt.verify(
-        token,
-        JWT_SECRET
-      );
-
-
-    if (
-      decoded.role !== "admin"
-    ) {
-
-      return res.status(403).json({
-        message: "Admin access required."
-      });
+        return sendError(
+            res,
+            401,
+            "Session expired. Please login again."
+        );
 
     }
-
-
-    req.admin = decoded;
-
-
-    next();
-
-
-  } catch (error) {
-
-    console.error(
-      "Admin authentication error:",
-      error.message
-    );
-
-
-    return res.status(401).json({
-      message: "Invalid or expired admin token."
-    });
-
-  }
 
 }
 
 
-// =========================
-// ADMIN LOGIN
-// =========================
+/* =========================================================
+   ADMIN LOGIN
+========================================================= */
 
-app.post(
-  "/api/admin/login",
-  async (req, res) => {
+app.post("/api/admin/login", async (req, res) => {
 
     try {
 
-      const {
-        username,
-        password
-      } = req.body;
-
-
-      if (
-        !username ||
-        !password
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Username and password are required."
-        });
-
-      }
-
-
-      const usernameMatches =
-        String(username).trim() ===
-        ADMIN_USERNAME;
-
-
-      const passwordMatches =
-        await bcrypt.compare(
-          String(password),
-          ADMIN_PASSWORD_HASH
-        );
-
-
-      if (
-        !usernameMatches ||
-        !passwordMatches
-      ) {
-
-        return res.status(401).json({
-          message:
-            "Invalid username or password."
-        });
-
-      }
-
-
-      const token =
-        jwt.sign(
-          {
-            username:
-              ADMIN_USERNAME,
-
-            role:
-              "admin"
-          },
-          JWT_SECRET,
-          {
-            expiresIn: "8h"
-          }
-        );
-
-
-      res.json({
-
-        message:
-          "Admin login successful.",
-
-        token: token,
-
-        username:
-          ADMIN_USERNAME
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Admin login error:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Admin login failed."
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// CHECK ADMIN TOKEN
-// =========================
-
-app.get(
-  "/api/admin/check",
-  authenticateAdmin,
-  (req, res) => {
-
-    res.json({
-
-      authenticated: true,
-
-      username:
-        req.admin.username
-
-    });
-
-  }
-);
-
-
-// =========================
-// STARTER PRODUCTS
-// =========================
-
-const starterProducts = [
-
-  // GROCERIES
-
-  {
-    name: "Rice",
-    size: "1 kg",
-    price: 70,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Quality rice for everyday cooking"
-  },
-
-  {
-    name: "Sugar",
-    size: "1 kg",
-    price: 50,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Fine white sugar"
-  },
-
-  {
-    name: "Salt",
-    size: "1 kg",
-    price: 25,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Daily cooking salt"
-  },
-
-  {
-    name: "Toor Dal",
-    size: "1 kg",
-    price: 130,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Toor dal for everyday cooking"
-  },
-
-  {
-    name: "Moong Dal",
-    size: "1 kg",
-    price: 120,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Yellow moong dal"
-  },
-
-  {
-    name: "Chana Dal",
-    size: "1 kg",
-    price: 90,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Split Bengal gram"
-  },
-
-  {
-    name: "Wheat Flour",
-    size: "1 kg",
-    price: 55,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Wheat flour for chapati and roti"
-  },
-
-  {
-    name: "Rava",
-    size: "500 g",
-    price: 35,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Fine rava"
-  },
-
-  {
-    name: "Maida",
-    size: "500 g",
-    price: 35,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Refined wheat flour"
-  },
-
-  {
-    name: "Cooking Oil",
-    size: "1 L",
-    price: 150,
-    category: "groceries",
-    image: "",
-    stock: "available",
-    description:
-      "Cooking oil"
-  },
-
-
-  // DAIRY
-
-  {
-    name: "Milk",
-    size: "1 L",
-    price: 60,
-    category: "dairy",
-    image: "",
-    stock: "available",
-    description:
-      "Fresh milk"
-  },
-
-  {
-    name: "Curd",
-    size: "500 g",
-    price: 40,
-    category: "dairy",
-    image: "",
-    stock: "available",
-    description:
-      "Fresh curd"
-  },
-
-  {
-    name: "Butter",
-    size: "100 g",
-    price: 60,
-    category: "dairy",
-    image: "",
-    stock: "available",
-    description:
-      "Creamy butter"
-  },
-
-  {
-    name: "Paneer",
-    size: "200 g",
-    price: 90,
-    category: "dairy",
-    image: "",
-    stock: "available",
-    description:
-      "Fresh paneer"
-  },
-
-  {
-    name: "Cheese",
-    size: "200 g",
-    price: 120,
-    category: "dairy",
-    image: "",
-    stock: "available",
-    description:
-      "Cheese slices"
-  },
-
-
-  // SNACKS
-
-  {
-    name: "Biscuits",
-    size: "100 g",
-    price: 20,
-    category: "snacks",
-    image: "",
-    stock: "available",
-    description:
-      "Tasty biscuits"
-  },
-
-  {
-    name: "Chips",
-    size: "100 g",
-    price: 30,
-    category: "snacks",
-    image: "",
-    stock: "available",
-    description:
-      "Crispy potato chips"
-  },
-
-  {
-    name: "Namkeen",
-    size: "200 g",
-    price: 50,
-    category: "snacks",
-    image: "",
-    stock: "available",
-    description:
-      "Crispy namkeen snack"
-  },
-
-  {
-    name: "Chocolate",
-    size: "50 g",
-    price: 40,
-    category: "snacks",
-    image: "",
-    stock: "available",
-    description:
-      "Milk chocolate"
-  },
-
-  {
-    name: "Cookies",
-    size: "100 g",
-    price: 35,
-    category: "snacks",
-    image: "",
-    stock: "available",
-    description:
-      "Crunchy cookies"
-  },
-
-
-  // DRINKS
-
-  {
-    name: "Coca-Cola",
-    size: "750 ml",
-    price: 45,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Refreshing soft drink"
-  },
-
-  {
-    name: "Pepsi",
-    size: "750 ml",
-    price: 45,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Refreshing cola drink"
-  },
-
-  {
-    name: "Sprite",
-    size: "750 ml",
-    price: 45,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Lemon-lime soft drink"
-  },
-
-  {
-    name: "Fanta",
-    size: "750 ml",
-    price: 45,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Orange soft drink"
-  },
-
-  {
-    name: "Juice",
-    size: "1 L",
-    price: 100,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Refreshing fruit juice"
-  },
-
-  {
-    name: "Water Bottle",
-    size: "1 L",
-    price: 20,
-    category: "drinks",
-    image: "",
-    stock: "available",
-    description:
-      "Packaged drinking water"
-  },
-
-
-  // PERSONAL CARE
-
-  {
-    name: "Bath Soap",
-    size: "100 g",
-    price: 40,
-    category: "personal",
-    image: "",
-    stock: "available",
-    description:
-      "Daily bathing soap"
-  },
-
-  {
-    name: "Shampoo",
-    size: "180 ml",
-    price: 120,
-    category: "personal",
-    image: "",
-    stock: "available",
-    description:
-      "Hair cleansing shampoo"
-  },
-
-  {
-    name: "Toothpaste",
-    size: "100 g",
-    price: 60,
-    category: "personal",
-    image: "",
-    stock: "available",
-    description:
-      "Daily use toothpaste"
-  },
-
-  {
-    name: "Toothbrush",
-    size: "1 piece",
-    price: 40,
-    category: "personal",
-    image: "",
-    stock: "available",
-    description:
-      "Soft bristle toothbrush"
-  },
-
-  {
-    name: "Hair Oil",
-    size: "100 ml",
-    price: 70,
-    category: "personal",
-    image: "",
-    stock: "available",
-    description:
-      "Hair care oil"
-  },
-
-
-  // HOUSEHOLD
-
-  {
-    name: "Detergent",
-    size: "1 kg",
-    price: 100,
-    category: "household",
-    image: "",
-    stock: "available",
-    description:
-      "Laundry detergent"
-  },
-
-  {
-    name: "Dishwash",
-    size: "500 ml",
-    price: 70,
-    category: "household",
-    image: "",
-    stock: "available",
-    description:
-      "Dishwashing liquid"
-  },
-
-  {
-    name: "Floor Cleaner",
-    size: "1 L",
-    price: 120,
-    category: "household",
-    image: "",
-    stock: "available",
-    description:
-      "Floor cleaning liquid"
-  },
-
-  {
-    name: "Washing Soap",
-    size: "250 g",
-    price: 30,
-    category: "household",
-    image: "",
-    stock: "available",
-    description:
-      "Laundry washing soap"
-  },
-
-  {
-    name: "Garbage Bags",
-    size: "30 pieces",
-    price: 80,
-    category: "household",
-    image: "",
-    stock: "available",
-    description:
-      "Garbage disposal bags"
-  }
-
-];
-
-
-// =========================
-// INSERT STARTER PRODUCTS
-// =========================
-
-const checkProduct =
-  db.prepare(`
-    SELECT id
-    FROM products
-    WHERE LOWER(name) = LOWER(?)
-    AND LOWER(
-      COALESCE(size, '')
-    ) =
-    LOWER(
-      COALESCE(?, '')
-    )
-    LIMIT 1
-  `);
-
-
-const insertProduct =
-  db.prepare(`
-    INSERT INTO products
-    (
-      name,
-      size,
-      price,
-      category,
-      image,
-      stock,
-      description
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-
-
-let addedProducts = 0;
-
-
-for (
-  const product of starterProducts
-) {
-
-  const existingProduct =
-    checkProduct.get(
-      product.name,
-      product.size
-    );
-
-
-  if (!existingProduct) {
-
-    insertProduct.run(
-      String(product.name),
-      String(product.size),
-      Number(product.price),
-      String(product.category),
-      String(product.image),
-      String(product.stock),
-      String(product.description)
-    );
-
-
-    addedProducts++;
-
-  }
-
-}
-
-
-console.log(
-  `Starter products added: ${addedProducts}`
-);
-
-
-// =========================
-// BASIC ROUTE
-// =========================
-
-app.get(
-  "/",
-  (req, res) => {
-
-    res.json({
-
-      message:
-        "Rohith Mini Mart backend is running",
-
-      status:
-        "success"
-
-    });
-
-  }
-);
-
-
-// =========================
-// GET ALL PRODUCTS
-// =========================
-// PUBLIC
-// Customer website needs this.
-//
-
-app.get(
-  "/api/products",
-  (req, res) => {
-
-    try {
-
-      const products =
-        db.prepare(`
-          SELECT *
-          FROM products
-          ORDER BY id ASC
-        `).all();
-
-
-      res.json(products);
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to fetch products:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to fetch products"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// GET SINGLE PRODUCT
-// =========================
-// PUBLIC
-//
-
-app.get(
-  "/api/products/:id",
-  (req, res) => {
-
-    try {
-
-      const id =
-        Number(req.params.id);
-
-
-      if (
-        !Number.isInteger(id)
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid product ID"
-        });
-
-      }
-
-
-      const product =
-        db.prepare(`
-          SELECT *
-          FROM products
-          WHERE id = ?
-        `).get(id);
-
-
-      if (!product) {
-
-        return res.status(404).json({
-          message:
-            "Product not found"
-        });
-
-      }
-
-
-      res.json(product);
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to fetch product:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to fetch product"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// ADD PRODUCT
-// =========================
-// ADMIN ONLY
-//
-
-app.post(
-  "/api/products",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const {
-        name,
-        size,
-        price,
-        category,
-        image,
-        stock,
-        description
-      } = req.body;
-
-
-      if (
-        !name ||
-        price === undefined ||
-        price === null
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Product name and price are required"
-        });
-
-      }
-
-
-      const productName =
-        String(name).trim();
-
-
-      const productSize =
-        size
-          ? String(size).trim()
-          : "";
-
-
-      const productPrice =
-        Number(price);
-
-
-      if (!productName) {
-
-        return res.status(400).json({
-          message:
-            "Product name is required"
-        });
-
-      }
-
-
-      if (
-        !Number.isFinite(productPrice) ||
-        productPrice < 0
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid product price"
-        });
-
-      }
-
-
-      const result =
-        db.prepare(`
-          INSERT INTO products
-          (
-            name,
-            size,
-            price,
-            category,
-            image,
-            stock,
-            description
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(
-
-          productName,
-
-          productSize,
-
-          productPrice,
-
-          category
-            ? String(category)
-            : "",
-
-          image
-            ? String(image)
-            : "",
-
-          stock
-            ? String(stock)
-            : "available",
-
-          description
-            ? String(description)
-            : ""
-
-        );
-
-
-      const product =
-        db.prepare(`
-          SELECT *
-          FROM products
-          WHERE id = ?
-        `).get(
-          result.lastInsertRowid
-        );
-
-
-      res.status(201).json(
-        product
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to add product:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to add product"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// UPDATE PRODUCT
-// =========================
-// ADMIN ONLY
-//
-
-app.put(
-  "/api/products/:id",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const id =
-        Number(req.params.id);
-
-
-      if (
-        !Number.isInteger(id)
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid product ID"
-        });
-
-      }
-
-
-      const existingProduct =
-        db.prepare(`
-          SELECT *
-          FROM products
-          WHERE id = ?
-        `).get(id);
-
-
-      if (!existingProduct) {
-
-        return res.status(404).json({
-          message:
-            "Product not found"
-        });
-
-      }
-
-
-      const {
-        name,
-        size,
-        price,
-        category,
-        image,
-        stock,
-        description
-      } = req.body;
-
-
-      const updatedName =
-        name !== undefined
-          ? String(name).trim()
-          : existingProduct.name;
-
-
-      const updatedSize =
-        size !== undefined
-          ? String(size).trim()
-          : existingProduct.size;
-
-
-      const updatedPrice =
-        price !== undefined
-          ? Number(price)
-          : existingProduct.price;
-
-
-      const updatedCategory =
-        category !== undefined
-          ? String(category)
-          : existingProduct.category;
-
-
-      const updatedImage =
-        image !== undefined
-          ? String(image)
-          : existingProduct.image;
-
-
-      const updatedStock =
-        stock !== undefined
-          ? String(stock)
-          : existingProduct.stock;
-
-
-      const updatedDescription =
-        description !== undefined
-          ? String(description)
-          : existingProduct.description;
-
-
-      if (!updatedName) {
-
-        return res.status(400).json({
-          message:
-            "Product name is required"
-        });
-
-      }
-
-
-      if (
-        !Number.isFinite(updatedPrice) ||
-        updatedPrice < 0
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid product price"
-        });
-
-      }
-
-
-      db.prepare(`
-        UPDATE products
-        SET
-          name = ?,
-          size = ?,
-          price = ?,
-          category = ?,
-          image = ?,
-          stock = ?,
-          description = ?
-        WHERE id = ?
-      `).run(
-
-        updatedName,
-
-        updatedSize,
-
-        updatedPrice,
-
-        updatedCategory,
-
-        updatedImage,
-
-        updatedStock,
-
-        updatedDescription,
-
-        id
-
-      );
-
-
-      const product =
-        db.prepare(`
-          SELECT *
-          FROM products
-          WHERE id = ?
-        `).get(id);
-
-
-      res.json(product);
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to update product:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to update product"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// DELETE PRODUCT
-// =========================
-// ADMIN ONLY
-//
-
-app.delete(
-  "/api/products/:id",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const id =
-        Number(req.params.id);
-
-
-      if (
-        !Number.isInteger(id)
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid product ID"
-        });
-
-      }
-
-
-      const product =
-        db.prepare(`
-          SELECT *
-          FROM products
-          WHERE id = ?
-        `).get(id);
-
-
-      if (!product) {
-
-        return res.status(404).json({
-          message:
-            "Product not found"
-        });
-
-      }
-
-
-      db.prepare(`
-        DELETE FROM products
-        WHERE id = ?
-      `).run(id);
-
-
-      res.json({
-
-        message:
-          "Product deleted successfully"
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to delete product:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to delete product"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// SHOP STATUS
-// =========================
-// PUBLIC READ
-// Customer website needs this.
-//
-
-app.get(
-  "/api/shop-status",
-  (req, res) => {
-
-    try {
-
-      const setting =
-        db.prepare(`
-          SELECT value
-          FROM settings
-          WHERE key = ?
-        `).get(
-          "shop_open"
-        );
-
-
-      const shopOpen =
-        setting
-          ? setting.value === "true"
-          : true;
-
-
-      res.json({
-
-        shop_open:
-          shopOpen
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to get shop status:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to get shop status"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// UPDATE SHOP STATUS
-// =========================
-// ADMIN ONLY
-//
-
-app.put(
-  "/api/shop-status",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const shopOpen =
-        req.body.shop_open === true;
-
-
-      db.prepare(`
-        INSERT INTO settings
-        (
-          key,
-          value
-        )
-        VALUES (?, ?)
-        ON CONFLICT(key)
-        DO UPDATE SET
-          value = excluded.value
-      `).run(
-
-        "shop_open",
-
-        String(shopOpen)
-
-      );
-
-
-      res.json({
-
-        shop_open:
-          shopOpen
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to update shop status:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to update shop status"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// CREATE ORDER
-// =========================
-// PUBLIC
-// Customer website needs this.
-//
-
-app.post(
-  "/api/orders",
-  (req, res) => {
-
-    try {
-
-      console.log(
-        "\n=============================="
-      );
-
-      console.log(
-        "NEW ORDER REQUEST"
-      );
-
-      console.log(
-        "=============================="
-      );
-
-
-      const shopStatus =
-        db.prepare(`
-          SELECT value
-          FROM settings
-          WHERE key = ?
-        `).get(
-          "shop_open"
-        );
-
-
-      const shopOpen =
-        shopStatus
-          ? shopStatus.value === "true"
-          : true;
-
-
-      if (!shopOpen) {
-
-        return res.status(403).json({
-          message:
-            "Shop is currently closed."
-        });
-
-      }
-
-
-      const {
-        customer_name,
-        phone,
-        address,
-        payment_method,
-        total,
-        items
-      } = req.body;
-
-
-      console.log(
-        "Received order data:",
-        req.body
-      );
-
-
-      if (
-        !customer_name ||
-        !phone ||
-        !address ||
-        !payment_method ||
-        total === undefined ||
-        !Array.isArray(items) ||
-        items.length === 0
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Missing required order information."
-        });
-
-      }
-
-
-      const cleanCustomerName =
-        String(customer_name);
-
-
-      const cleanPhone =
-        String(phone);
-
-
-      const cleanAddress =
-        String(address);
-
-
-      const cleanPaymentMethod =
-        String(payment_method);
-
-
-      const cleanTotal =
-        Number(total);
-
-
-      if (
-        !Number.isFinite(cleanTotal) ||
-        cleanTotal < 0
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid order total."
-        });
-
-      }
-
-
-      const cleanItems =
-        items.map(
-          (item) => ({
-
-            product_id:
-              Number(item.product_id),
-
-            product_name:
-              String(item.product_name),
-
-            quantity:
-              Number(item.quantity),
-
-            price:
-              Number(item.price)
-
-          })
-        );
-
-
-      for (
-        const item of cleanItems
-      ) {
-
-        if (
-          !Number.isInteger(
-            item.product_id
-          ) ||
-
-          !item.product_name ||
-
-          !Number.isInteger(
-            item.quantity
-          ) ||
-
-          item.quantity <= 0 ||
-
-          !Number.isFinite(
-            item.price
-          ) ||
-
-          item.price < 0
-        ) {
-
-          return res.status(400).json({
-            message:
-              "Invalid product information in order."
-          });
+        const username =
+            String(req.body.username || "").trim();
+
+        const password =
+            String(req.body.password || "");
+
+        if (!username || !password) {
+
+            return sendError(
+                res,
+                400,
+                "Username and password are required"
+            );
 
         }
 
-      }
+        if (username !== ADMIN_USERNAME) {
 
+            return sendError(
+                res,
+                401,
+                "Invalid username or password"
+            );
 
-      console.log(
-        "Clean order data:",
-        {
-          customer_name:
-            cleanCustomerName,
-
-          phone:
-            cleanPhone,
-
-          address:
-            cleanAddress,
-
-          payment_method:
-            cleanPaymentMethod,
-
-          total:
-            cleanTotal,
-
-          items:
-            cleanItems
         }
-      );
+
+        const passwordHash =
+            await bcrypt.hash(
+                ADMIN_PASSWORD,
+                10
+            );
+
+        const passwordMatches =
+            await bcrypt.compare(
+                password,
+                passwordHash
+            );
+
+        if (!passwordMatches) {
+
+            return sendError(
+                res,
+                401,
+                "Invalid username or password"
+            );
+
+        }
+
+        const token =
+            createToken(username);
+
+        res.json({
+            success: true,
+            token: token,
+            username: username
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Admin login error:",
+            error
+        );
+
+        return sendError(
+            res,
+            500,
+            "Login failed"
+        );
+
+    }
+
+});
 
 
-      const createOrder =
-        db.transaction(() => {
+/* =========================================================
+   CHECK ADMIN LOGIN
+========================================================= */
 
-          const orderResult =
-            db.prepare(`
-              INSERT INTO orders
-              (
-                customer_name,
-                phone,
-                address,
-                payment_method,
-                total,
-                status
-              )
-              VALUES (?, ?, ?, ?, ?, ?)
+app.get(
+    "/api/admin/check",
+    requireAdmin,
+    (req, res) => {
+
+        res.json({
+            success: true,
+            loggedIn: true,
+            username: req.admin.username
+        });
+
+    }
+);
+
+
+/* =========================================================
+   GET ALL PRODUCTS
+========================================================= */
+
+app.get("/api/products", (req, res) => {
+
+    try {
+
+        const products = db
+            .prepare(`
+                SELECT *
+                FROM products
+                ORDER BY id ASC
+            `)
+            .all();
+
+        res.json(products);
+
+    } catch (error) {
+
+        console.error(
+            "Get products error:",
+            error
+        );
+
+        return sendError(
+            res,
+            500,
+            "Failed to load products"
+        );
+
+    }
+
+});
+
+
+/* =========================================================
+   GET SINGLE PRODUCT
+========================================================= */
+
+app.get(
+    "/api/products/:id",
+    (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+            const product =
+                db.prepare(`
+                    SELECT *
+                    FROM products
+                    WHERE id = ?
+                `).get(id);
+
+            if (!product) {
+
+                return sendError(
+                    res,
+                    404,
+                    "Product not found"
+                );
+
+            }
+
+            res.json(product);
+
+        } catch (error) {
+
+            console.error(
+                "Get product error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to load product"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ADD PRODUCT
+========================================================= */
+
+app.post(
+    "/api/products",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            const name =
+                String(req.body.name || "").trim();
+
+            const size =
+                String(req.body.size || "").trim();
+
+            const price =
+                Number(req.body.price);
+
+            const category =
+                String(
+                    req.body.category || "Other"
+                ).trim();
+
+            const image =
+                String(req.body.image || "").trim();
+
+            const stock =
+                String(
+                    req.body.stock || "available"
+                ).trim();
+
+            const description =
+                String(
+                    req.body.description || ""
+                ).trim();
+
+
+            if (!name) {
+
+                return sendError(
+                    res,
+                    400,
+                    "Product name is required"
+                );
+
+            }
+
+            if (
+                Number.isNaN(price) ||
+                price < 0
+            ) {
+
+                return sendError(
+                    res,
+                    400,
+                    "Enter a valid price"
+                );
+
+            }
+
+
+            const result = db.prepare(`
+                INSERT INTO products
+                (
+                    name,
+                    size,
+                    price,
+                    category,
+                    image,
+                    stock,
+                    description
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `).run(
-
-              cleanCustomerName,
-
-              cleanPhone,
-
-              cleanAddress,
-
-              cleanPaymentMethod,
-
-              cleanTotal,
-
-              "pending"
-
+                name,
+                size,
+                price,
+                category,
+                image,
+                stock,
+                description
             );
 
 
-          const orderId =
-            Number(
-              orderResult.lastInsertRowid
+            const product =
+                db.prepare(`
+                    SELECT *
+                    FROM products
+                    WHERE id = ?
+                `).get(result.lastInsertRowid);
+
+
+            res.status(201).json({
+                success: true,
+                message: "Product added successfully",
+                product: product
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Add product error:",
+                error
             );
 
-
-          const insertItem =
-            db.prepare(`
-              INSERT INTO order_items
-              (
-                order_id,
-                product_id,
-                product_name,
-                quantity,
-                price
-              )
-              VALUES (?, ?, ?, ?, ?)
-            `);
-
-
-          for (
-            const item of cleanItems
-          ) {
-
-            insertItem.run(
-
-              orderId,
-
-              item.product_id,
-
-              item.product_name,
-
-              item.quantity,
-
-              item.price
-
+            return sendError(
+                res,
+                500,
+                "Failed to add product"
             );
 
-          }
-
-
-          return orderId;
-
-        });
-
-
-      const orderId =
-        createOrder();
-
-
-      console.log(
-        "ORDER CREATED SUCCESSFULLY:",
-        orderId
-      );
-
-
-      res.status(201).json({
-
-        message:
-          "Order placed successfully.",
-
-        order_id:
-          orderId
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "ORDER CREATION ERROR:",
-        error
-      );
-
-
-      res.status(500).json({
-
-        message:
-          "Failed to place order.",
-
-        error:
-          error.message
-
-      });
+        }
 
     }
-
-  }
 );
 
 
-// =========================
-// GET ALL ORDERS
-// =========================
-// ADMIN ONLY
-//
-
-app.get(
-  "/api/orders",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const orders =
-        db.prepare(`
-          SELECT *
-          FROM orders
-          ORDER BY id DESC
-        `).all();
-
-
-      res.json(orders);
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to fetch orders:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to fetch orders"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// GET SINGLE ORDER
-// =========================
-// ADMIN ONLY
-//
-
-app.get(
-  "/api/orders/:id",
-  authenticateAdmin,
-  (req, res) => {
-
-    try {
-
-      const orderId =
-        Number(req.params.id);
-
-
-      if (
-        !Number.isInteger(orderId)
-      ) {
-
-        return res.status(400).json({
-          message:
-            "Invalid order ID"
-        });
-
-      }
-
-
-      const order =
-        db.prepare(`
-          SELECT *
-          FROM orders
-          WHERE id = ?
-        `).get(orderId);
-
-
-      if (!order) {
-
-        return res.status(404).json({
-          message:
-            "Order not found"
-        });
-
-      }
-
-
-      const items =
-        db.prepare(`
-          SELECT *
-          FROM order_items
-          WHERE order_id = ?
-          ORDER BY id ASC
-        `).all(orderId);
-
-
-      res.json({
-
-        ...order,
-
-        items:
-          items
-
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to fetch order:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to fetch order"
-      });
-
-    }
-
-  }
-);
-
-
-// =========================
-// UPDATE ORDER STATUS
-// =========================
-// ADMIN ONLY
-//
+/* =========================================================
+   UPDATE PRODUCT
+========================================================= */
 
 app.put(
-  "/api/orders/:id/status",
-  authenticateAdmin,
-  (req, res) => {
+    "/api/products/:id",
+    requireAdmin,
+    (req, res) => {
 
-    try {
+        try {
 
-      const orderId =
-        Number(req.params.id);
+            const id =
+                Number(req.params.id);
 
+            const existing =
+                db.prepare(`
+                    SELECT *
+                    FROM products
+                    WHERE id = ?
+                `).get(id);
 
-      const status =
-        String(
-          req.body.status || ""
-        );
+            if (!existing) {
 
+                return sendError(
+                    res,
+                    404,
+                    "Product not found"
+                );
 
-      const allowedStatuses = [
-
-        "pending",
-
-        "confirmed",
-
-        "preparing",
-
-        "out_for_delivery",
-
-        "delivered",
-
-        "cancelled"
-
-      ];
+            }
 
 
-      if (
-        !Number.isInteger(orderId)
-      ) {
+            const name =
+                String(
+                    req.body.name ?? existing.name
+                ).trim();
 
-        return res.status(400).json({
-          message:
-            "Invalid order ID"
-        });
+            const size =
+                String(
+                    req.body.size ?? existing.size
+                ).trim();
 
-      }
+            const price =
+                Number(
+                    req.body.price ?? existing.price
+                );
 
+            const category =
+                String(
+                    req.body.category ??
+                    existing.category
+                ).trim();
 
-      if (
-        !allowedStatuses.includes(
-          status
-        )
-      ) {
+            const image =
+                String(
+                    req.body.image ??
+                    existing.image
+                ).trim();
 
-        return res.status(400).json({
-          message:
-            "Invalid order status"
-        });
+            const stock =
+                String(
+                    req.body.stock ??
+                    existing.stock
+                ).trim();
 
-      }
-
-
-      const order =
-        db.prepare(`
-          SELECT *
-          FROM orders
-          WHERE id = ?
-        `).get(orderId);
-
-
-      if (!order) {
-
-        return res.status(404).json({
-          message:
-            "Order not found"
-        });
-
-      }
+            const description =
+                String(
+                    req.body.description ??
+                    existing.description
+                ).trim();
 
 
-      db.prepare(`
-        UPDATE orders
-        SET status = ?
-        WHERE id = ?
-      `).run(
+            if (!name) {
 
-        status,
+                return sendError(
+                    res,
+                    400,
+                    "Product name is required"
+                );
 
-        orderId
+            }
 
-      );
+            if (
+                Number.isNaN(price) ||
+                price < 0
+            ) {
 
+                return sendError(
+                    res,
+                    400,
+                    "Enter a valid price"
+                );
 
-      const updatedOrder =
-        db.prepare(`
-          SELECT *
-          FROM orders
-          WHERE id = ?
-        `).get(orderId);
-
-
-      res.json(
-        updatedOrder
-      );
+            }
 
 
-    } catch (error) {
+            db.prepare(`
+                UPDATE products
+                SET
+                    name = ?,
+                    size = ?,
+                    price = ?,
+                    category = ?,
+                    image = ?,
+                    stock = ?,
+                    description = ?
+                WHERE id = ?
+            `).run(
+                name,
+                size,
+                price,
+                category,
+                image,
+                stock,
+                description,
+                id
+            );
 
-      console.error(
-        "Failed to update order status:",
-        error
-      );
+
+            const product =
+                db.prepare(`
+                    SELECT *
+                    FROM products
+                    WHERE id = ?
+                `).get(id);
 
 
-      res.status(500).json({
-        message:
-          "Failed to update order status"
-      });
+            res.json({
+                success: true,
+                message: "Product updated successfully",
+                product: product
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Update product error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to update product"
+            );
+
+        }
 
     }
-
-  }
 );
 
 
-// =========================
-// DELETE ORDER
-// =========================
-// ADMIN ONLY
-//
+/* =========================================================
+   DELETE PRODUCT
+========================================================= */
 
 app.delete(
-  "/api/orders/:id",
-  authenticateAdmin,
-  (req, res) => {
+    "/api/products/:id",
+    requireAdmin,
+    (req, res) => {
 
-    try {
+        try {
 
-      const orderId =
-        Number(req.params.id);
+            const id =
+                Number(req.params.id);
 
+            const product =
+                db.prepare(`
+                    SELECT *
+                    FROM products
+                    WHERE id = ?
+                `).get(id);
 
-      if (
-        !Number.isInteger(orderId)
-      ) {
+            if (!product) {
 
-        return res.status(400).json({
-          message:
-            "Invalid order ID"
-        });
+                return sendError(
+                    res,
+                    404,
+                    "Product not found"
+                );
 
-      }
-
-
-      const order =
-        db.prepare(`
-          SELECT *
-          FROM orders
-          WHERE id = ?
-        `).get(orderId);
+            }
 
 
-      if (!order) {
-
-        return res.status(404).json({
-          message:
-            "Order not found"
-        });
-
-      }
+            db.prepare(`
+                DELETE FROM products
+                WHERE id = ?
+            `).run(id);
 
 
-      db.prepare(`
-        DELETE FROM orders
-        WHERE id = ?
-      `).run(orderId);
+            res.json({
+                success: true,
+                message: "Product deleted successfully"
+            });
 
+        } catch (error) {
 
-      res.json({
+            console.error(
+                "Delete product error:",
+                error
+            );
 
-        message:
-          "Order deleted successfully"
+            return sendError(
+                res,
+                500,
+                "Failed to delete product"
+            );
 
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "Failed to delete order:",
-        error
-      );
-
-
-      res.status(500).json({
-        message:
-          "Failed to delete order"
-      });
+        }
 
     }
-
-  }
 );
 
 
-// =========================
-// START SERVER
-// =========================
+/* =========================================================
+   GET SHOP STATUS
+========================================================= */
+
+app.get(
+    "/api/shop-status",
+    (req, res) => {
+
+        try {
+
+            const settings =
+                db.prepare(`
+                    SELECT shop_open
+                    FROM settings
+                    WHERE id = 1
+                `).get();
+
+
+            const shopOpen =
+                settings
+                    ? Boolean(settings.shop_open)
+                    : true;
+
+
+            res.json({
+                success: true,
+                shopOpen: shopOpen,
+                open: shopOpen
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Get shop status error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to get shop status"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   UPDATE SHOP STATUS
+========================================================= */
+
+app.put(
+    "/api/shop-status",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            let shopOpen =
+                req.body.shopOpen;
+
+
+            if (
+                shopOpen === undefined &&
+                req.body.open !== undefined
+            ) {
+                shopOpen = req.body.open;
+            }
+
+
+            if (
+                typeof shopOpen === "string"
+            ) {
+
+                shopOpen =
+                    shopOpen.toLowerCase() === "true";
+
+            }
+
+
+            shopOpen =
+                Boolean(shopOpen);
+
+
+            db.prepare(`
+                UPDATE settings
+                SET shop_open = ?
+                WHERE id = 1
+            `).run(
+                shopOpen ? 1 : 0
+            );
+
+
+            res.json({
+                success: true,
+                message: shopOpen
+                    ? "Shop opened successfully"
+                    : "Shop closed successfully",
+                shopOpen: shopOpen,
+                open: shopOpen
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Update shop status error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to update shop status"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   CREATE ORDER
+========================================================= */
+
+app.post(
+    "/api/orders",
+    (req, res) => {
+
+        try {
+
+            const shopSettings =
+                db.prepare(`
+                    SELECT shop_open
+                    FROM settings
+                    WHERE id = 1
+                `).get();
+
+
+            if (
+                shopSettings &&
+                !Boolean(shopSettings.shop_open)
+            ) {
+
+                return sendError(
+                    res,
+                    403,
+                    "Shop is currently closed"
+                );
+
+            }
+
+
+            const customerName =
+                String(
+                    req.body.customer_name ??
+                    req.body.customerName ??
+                    req.body.name ??
+                    ""
+                ).trim();
+
+
+            const phone =
+                String(
+                    req.body.phone ?? ""
+                ).trim();
+
+
+            const address =
+                String(
+                    req.body.address ?? ""
+                ).trim();
+
+
+            const items =
+                Array.isArray(req.body.items)
+                    ? req.body.items
+                    : Array.isArray(req.body.cart)
+                        ? req.body.cart
+                        : [];
+
+
+            if (items.length === 0) {
+
+                return sendError(
+                    res,
+                    400,
+                    "Order items are required"
+                );
+
+            }
+
+
+            let total = 0;
+
+            const preparedItems = [];
+
+
+            for (const item of items) {
+
+                const productId =
+                    Number(
+                        item.product_id ??
+                        item.productId ??
+                        item.id
+                    );
+
+
+                const quantity =
+                    Number(
+                        item.quantity ??
+                        item.qty ??
+                        1
+                    );
+
+
+                if (
+                    !Number.isInteger(productId) ||
+                    !Number.isInteger(quantity) ||
+                    quantity <= 0
+                ) {
+
+                    return sendError(
+                        res,
+                        400,
+                        "Invalid order item"
+                    );
+
+                }
+
+
+                const product =
+                    db.prepare(`
+                        SELECT *
+                        FROM products
+                        WHERE id = ?
+                    `).get(productId);
+
+
+                if (!product) {
+
+                    return sendError(
+                        res,
+                        400,
+                        "One of the selected products no longer exists"
+                    );
+
+                }
+
+
+                if (
+                    String(product.stock)
+                        .toLowerCase() !== "available"
+                ) {
+
+                    return sendError(
+                        res,
+                        400,
+                        product.name +
+                        " is currently unavailable"
+                    );
+
+                }
+
+
+                const itemTotal =
+                    Number(product.price) *
+                    quantity;
+
+
+                total += itemTotal;
+
+
+                preparedItems.push({
+                    productId: product.id,
+                    name: product.name,
+                    size: product.size,
+                    price: Number(product.price),
+                    quantity: quantity
+                });
+
+            }
+
+
+            const createOrder =
+                db.transaction(() => {
+
+                    const orderResult =
+                        db.prepare(`
+                            INSERT INTO orders
+                            (
+                                customer_name,
+                                phone,
+                                address,
+                                total,
+                                status
+                            )
+                            VALUES (?, ?, ?, ?, ?)
+                        `).run(
+                            customerName,
+                            phone,
+                            address,
+                            total,
+                            "pending"
+                        );
+
+
+                    const orderId =
+                        Number(
+                            orderResult.lastInsertRowid
+                        );
+
+
+                    const insertItem =
+                        db.prepare(`
+                            INSERT INTO order_items
+                            (
+                                order_id,
+                                product_id,
+                                product_name,
+                                size,
+                                price,
+                                quantity
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        `);
+
+
+                    for (
+                        const item
+                        of preparedItems
+                    ) {
+
+                        insertItem.run(
+                            orderId,
+                            item.productId,
+                            item.name,
+                            item.size,
+                            item.price,
+                            item.quantity
+                        );
+
+                    }
+
+
+                    return orderId;
+
+                });
+
+
+            const order =
+                db.prepare(`
+                    SELECT *
+                    FROM orders
+                    WHERE id = ?
+                `).get(createOrder);
+
+
+            const orderItems =
+                db.prepare(`
+                    SELECT *
+                    FROM order_items
+                    WHERE order_id = ?
+                    ORDER BY id ASC
+                `).all(createOrder);
+
+
+            res.status(201).json({
+                success: true,
+                message: "Order placed successfully",
+                order: {
+                    ...order,
+                    items: orderItems
+                },
+                orderId: createOrder
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Create order error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to create order"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   GET ALL ORDERS
+========================================================= */
+
+app.get(
+    "/api/orders",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            const orders =
+                db.prepare(`
+                    SELECT *
+                    FROM orders
+                    ORDER BY id DESC
+                `).all();
+
+
+            for (const order of orders) {
+
+                order.items =
+                    db.prepare(`
+                        SELECT *
+                        FROM order_items
+                        WHERE order_id = ?
+                        ORDER BY id ASC
+                    `).all(order.id);
+
+            }
+
+
+            res.json(orders);
+
+        } catch (error) {
+
+            console.error(
+                "Get orders error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to load orders"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   GET SINGLE ORDER
+========================================================= */
+
+app.get(
+    "/api/orders/:id",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+
+            const order =
+                db.prepare(`
+                    SELECT *
+                    FROM orders
+                    WHERE id = ?
+                `).get(id);
+
+
+            if (!order) {
+
+                return sendError(
+                    res,
+                    404,
+                    "Order not found"
+                );
+
+            }
+
+
+            order.items =
+                db.prepare(`
+                    SELECT *
+                    FROM order_items
+                    WHERE order_id = ?
+                    ORDER BY id ASC
+                `).all(id);
+
+
+            res.json(order);
+
+        } catch (error) {
+
+            console.error(
+                "Get order error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to load order"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   UPDATE ORDER STATUS
+========================================================= */
+
+app.put(
+    "/api/orders/:id/status",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+
+            const status =
+                String(
+                    req.body.status || ""
+                ).trim();
+
+
+            const allowedStatuses = [
+                "pending",
+                "confirmed",
+                "preparing",
+                "out_for_delivery",
+                "delivered",
+                "cancelled"
+            ];
+
+
+            if (
+                !allowedStatuses.includes(status)
+            ) {
+
+                return sendError(
+                    res,
+                    400,
+                    "Invalid order status"
+                );
+
+            }
+
+
+            const order =
+                db.prepare(`
+                    SELECT id
+                    FROM orders
+                    WHERE id = ?
+                `).get(id);
+
+
+            if (!order) {
+
+                return sendError(
+                    res,
+                    404,
+                    "Order not found"
+                );
+
+            }
+
+
+            db.prepare(`
+                UPDATE orders
+                SET status = ?
+                WHERE id = ?
+            `).run(
+                status,
+                id
+            );
+
+
+            const updatedOrder =
+                db.prepare(`
+                    SELECT *
+                    FROM orders
+                    WHERE id = ?
+                `).get(id);
+
+
+            res.json({
+                success: true,
+                message: "Order status updated successfully",
+                order: updatedOrder
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Update order status error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to update order status"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   DELETE ORDER
+========================================================= */
+
+app.delete(
+    "/api/orders/:id",
+    requireAdmin,
+    (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+
+            const order =
+                db.prepare(`
+                    SELECT id
+                    FROM orders
+                    WHERE id = ?
+                `).get(id);
+
+
+            if (!order) {
+
+                return sendError(
+                    res,
+                    404,
+                    "Order not found"
+                );
+
+            }
+
+
+            db.prepare(`
+                DELETE FROM orders
+                WHERE id = ?
+            `).run(id);
+
+
+            res.json({
+                success: true,
+                message: "Order deleted successfully"
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Delete order error:",
+                error
+            );
+
+            return sendError(
+                res,
+                500,
+                "Failed to delete order"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ADMIN PAGE
+========================================================= */
+
+app.use(
+    "/admin",
+    express.static(
+        path.join(__dirname, "../admin")
+    )
+);
+
+
+/* =========================================================
+   HEALTH CHECK
+========================================================= */
+
+app.get("/", (req, res) => {
+
+    res.send(`
+        <html>
+        <head>
+            <title>Rohith Mini Mart Backend</title>
+        </head>
+
+        <body style="font-family: Arial; padding: 40px;">
+
+            <h1>ROHITH MINI MART BACKEND</h1>
+
+            <p>Backend server is running successfully.</p>
+
+            <p>
+                <strong>Server:</strong>
+                ${PORT}
+            </p>
+
+            <p>
+                <a href="/admin/">
+                    Open Admin Panel
+                </a>
+            </p>
+
+        </body>
+        </html>
+    `);
+
+});
+
+
+/* =========================================================
+   404 HANDLER
+========================================================= */
+
+app.use((req, res) => {
+
+    res.status(404).json({
+        success: false,
+        message: "API route not found"
+    });
+
+});
+
+
+/* =========================================================
+   START SERVER
+========================================================= */
 
 app.listen(
-  PORT,
-  () => {
+    PORT,
+    "0.0.0.0",
+    () => {
 
-    console.log("");
+        console.log(
+            "========================================"
+        );
 
-    console.log(
-      "======================================"
-    );
+        console.log(
+            "ROHITH MINI MART BACKEND"
+        );
 
-    console.log(
-      "  ROHITH MINI MART BACKEND"
-    );
+        console.log(
+            "Server running on port " + PORT
+        );
 
-    console.log(
-      "======================================"
-    );
+        console.log(
+            "http://localhost:" + PORT
+        );
 
-    console.log(
-      `  Server running on port ${PORT}`
-    );
+        console.log(
+            "Admin: http://localhost:" +
+            PORT +
+            "/admin/"
+        );
 
-    console.log(
-      `  http://localhost:${PORT}`
-    );
+        console.log(
+            "========================================"
+        );
 
-    console.log(
-      "======================================"
-    );
-
-    console.log("");
-
-  }
+    }
 );
