@@ -1485,41 +1485,26 @@ async function loadShopStatus() {
 
     try {
 
-        var response =
-            await fetch(
-                SHOP_STATUS_API_URL +
-                "?time=" +
-                Date.now(),
-                {
-                    method: "GET",
-                    cache: "no-store"
-                }
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load shop status"
-            );
-
-        }
-
-        var data =
-            await response.json();
-
-        console.log(
-            "Shop status from server:",
-            data
+        var response = await fetch(
+            SHOP_STATUS_API_URL + "?t=" + Date.now(),
+            {
+                method: "GET",
+                cache: "no-store"
+            }
         );
 
-        var statusValue =
-            data.shop_open;
+        var data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to get shop status"
+            );
+        }
+
+        var statusValue = data.shopOpen;
 
         if (statusValue === undefined) {
-
-            statusValue =
-                data.shopOpen;
-
+            statusValue = data.open;
         }
 
         shopOpen =
@@ -1530,6 +1515,11 @@ async function loadShopStatus() {
 
         updateShopStatusUI();
 
+        console.log(
+            "CUSTOMER SHOP STATUS:",
+            shopOpen ? "OPEN" : "CLOSED"
+        );
+
     } catch (error) {
 
         console.error(
@@ -1537,62 +1527,7 @@ async function loadShopStatus() {
             error
         );
 
-        /*
-         * If the server is temporarily waking up,
-         * keep the site usable.
-         */
-        shopOpen = true;
-
-        updateShopStatusUI();
-
     }
-
-}
-
-
-// =====================================================
-// UPDATE SHOP STATUS UI
-// =====================================================
-
-function updateShopStatusUI() {
-
-    var statusElements =
-        document.querySelectorAll(
-            ".shop-status, #shopStatus"
-        );
-
-    statusElements.forEach(function (element) {
-
-        if (shopOpen) {
-
-            element.textContent =
-                "🟢 Shop Open";
-
-            element.classList.remove(
-                "closed"
-            );
-
-            element.classList.add(
-                "open"
-            );
-
-        } else {
-
-            element.textContent =
-                "🔴 Shop Closed";
-
-            element.classList.remove(
-                "open"
-            );
-
-            element.classList.add(
-                "closed"
-            );
-
-        }
-
-    });
-
 }
 
 
