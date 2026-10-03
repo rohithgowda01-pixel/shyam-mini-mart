@@ -1,1613 +1,1431 @@
-// =====================================================
-// ROHITH MINI MART - ADMIN SCRIPT
-// =====================================================
+// ============================================================
+// ROHITH MINI MART - FINAL ADMIN SCRIPT
+// ============================================================
 
-// BACKEND URL
-const BACKEND_URL = "https://shyam-mini-mart.onrender.com";
+const API_BASE = "https://shyam-mini-mart.onrender.com";
 
-// API URLS
-const PRODUCTS_API = BACKEND_URL + "/api/products";
-const ORDERS_API = BACKEND_URL + "/api/orders";
-const SHOP_STATUS_API = BACKEND_URL + "/api/shop-status";
+const PRODUCTS_API = API_BASE + "/api/products";
+const ORDERS_API = API_BASE + "/api/orders";
+const SHOP_STATUS_API = API_BASE + "/api/shop-status";
+const LOGIN_API = API_BASE + "/api/admin/login";
 
-// =====================================================
-// ADMIN LOGIN DETAILS
-// =====================================================
 
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "1234";
-
-// =====================================================
+// ============================================================
 // GLOBAL VARIABLES
-// =====================================================
+// ============================================================
 
-let products = [];
-let orders = [];
-let editingProductId = null;
+var adminToken = localStorage.getItem("rohith_admin_token") || "";
 
-// =====================================================
-// PAGE LOAD
-// =====================================================
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    checkAdminLogin();
-
-    setupLogin();
-
-    setupLogout();
-
-    setupNavigation();
-
-    setupProductForm();
-
-    setupShopStatus();
-
-    loadProducts();
-
-    loadOrders();
-
-});
+var products = [];
+var orders = [];
+var shopOpen = true;
 
 
-// =====================================================
-// ADMIN LOGIN CHECK
-// =====================================================
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
 
-function checkAdminLogin() {
-
-    const loginScreen =
-        document.getElementById("adminLoginScreen");
-
-    const adminPanel =
-        document.getElementById("adminPanel");
-
-    const loggedIn =
-        localStorage.getItem("rohitMiniMartAdminLoggedIn");
-
-    if (loggedIn === "true") {
-
-        if (loginScreen) {
-            loginScreen.style.display = "none";
-        }
-
-        if (adminPanel) {
-            adminPanel.style.display = "block";
-        }
-
-    } else {
-
-        if (loginScreen) {
-            loginScreen.style.display = "flex";
-        }
-
-        if (adminPanel) {
-            adminPanel.style.display = "none";
-        }
-
-    }
-
+function getElement(id) {
+    return document.getElementById(id);
 }
 
 
-// =====================================================
+function showElement(id) {
+    var element = getElement(id);
+
+    if (element) {
+        element.style.display = "";
+    }
+}
+
+
+function hideElement(id) {
+    var element = getElement(id);
+
+    if (element) {
+        element.style.display = "none";
+    }
+}
+
+
+function setText(id, value) {
+    var element = getElement(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+
+function showMessage(message) {
+    alert(message);
+}
+
+
+function authHeaders() {
+    var headers = {
+        "Content-Type": "application/json"
+    };
+
+    if (adminToken) {
+        headers["Authorization"] = "Bearer " + adminToken;
+    }
+
+    return headers;
+}
+
+
+// ============================================================
 // LOGIN
-// =====================================================
+// ============================================================
 
-function setupLogin() {
+function loginAdmin(event) {
 
-    const loginButton =
-        document.getElementById("loginButton");
+    if (event) {
+        event.preventDefault();
+    }
 
-    const usernameInput =
-        document.getElementById("adminUsername");
+    var usernameElement = getElement("adminUsername");
+    var passwordElement = getElement("adminPassword");
 
-    const passwordInput =
-        document.getElementById("adminPassword");
-
-    const loginMessage =
-        document.getElementById("loginMessage");
-
-    if (!loginButton) {
+    if (!usernameElement || !passwordElement) {
+        showMessage("Login fields were not found.");
         return;
     }
 
-    loginButton.addEventListener("click", function () {
+    var username = usernameElement.value.trim();
+    var password = passwordElement.value;
 
-        const username =
-            usernameInput ? usernameInput.value.trim() : "";
+    if (username === "" || password === "") {
+        showMessage("Please enter username and password.");
+        return;
+    }
 
-        const password =
-            passwordInput ? passwordInput.value : "";
+    var loginButton = getElement("loginButton");
 
-        if (
-            username === ADMIN_USERNAME &&
-            password === ADMIN_PASSWORD
-        ) {
+    if (loginButton) {
+        loginButton.disabled = true;
+        loginButton.textContent = "Logging in...";
+    }
+
+    fetch(LOGIN_API, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            username: username,
+            password: password
+        })
+    })
+        .then(function(response) {
+
+            return response.text().then(function(text) {
+
+                var data = {};
+
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
+                }
+
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function(result) {
+
+            if (!result.ok) {
+                var errorMessage =
+                    result.data.message ||
+                    result.data.error ||
+                    "Invalid username or password.";
+
+                throw new Error(errorMessage);
+            }
+
+            var data = result.data;
+
+            var token =
+                data.token ||
+                data.accessToken ||
+                data.jwt ||
+                "";
+
+            if (!token) {
+                throw new Error(
+                    "Login succeeded but server did not send a login token."
+                );
+            }
+
+            adminToken = token;
 
             localStorage.setItem(
-                "rohitMiniMartAdminLoggedIn",
+                "rohith_admin_token",
+                adminToken
+            );
+
+            localStorage.setItem(
+                "rohith_admin_logged_in",
                 "true"
             );
 
-            if (loginMessage) {
-                loginMessage.textContent = "";
+            openAdminPanel();
+
+        })
+        .catch(function(error) {
+
+            console.error("Login error:", error);
+
+            showMessage(
+                error.message || "Login failed."
+            );
+
+        })
+        .finally(function() {
+
+            if (loginButton) {
+                loginButton.disabled = false;
+                loginButton.textContent = "Login";
             }
-
-            checkAdminLogin();
-
-            loadProducts();
-
-            loadOrders();
-
-            loadShopStatus();
-
-        } else {
-
-            if (loginMessage) {
-                loginMessage.textContent =
-                    "Invalid username or password.";
-            } else {
-                alert("Invalid username or password.");
-            }
-
-        }
-
-    });
-
-
-    if (passwordInput) {
-
-        passwordInput.addEventListener(
-            "keydown",
-            function (event) {
-
-                if (event.key === "Enter") {
-
-                    loginButton.click();
-
-                }
-
-            }
-        );
-
-    }
-
-}
-
-
-// =====================================================
-// LOGOUT
-// =====================================================
-
-function setupLogout() {
-
-    const logoutButton =
-        document.getElementById("logoutButton");
-
-    if (!logoutButton) {
-        return;
-    }
-
-    logoutButton.addEventListener("click", function () {
-
-        localStorage.removeItem(
-            "rohitMiniMartAdminLoggedIn"
-        );
-
-        location.reload();
-
-    });
-
-}
-
-
-// =====================================================
-// NAVIGATION
-// =====================================================
-
-function setupNavigation() {
-
-    const buttons =
-        document.querySelectorAll("[data-section]");
-
-    buttons.forEach(function (button) {
-
-        button.addEventListener("click", function () {
-
-            const sectionName =
-                button.getAttribute("data-section");
-
-            showSection(sectionName);
-
         });
-
-    });
-
 }
 
 
-// =====================================================
-// SHOW SECTION
-// =====================================================
+// ============================================================
+// OPEN ADMIN PANEL
+// ============================================================
 
-function showSection(sectionName) {
+function openAdminPanel() {
 
-    const sections =
-        document.querySelectorAll(".admin-section");
+    hideElement("adminLoginScreen");
 
-    sections.forEach(function (section) {
+    showElement("adminPanel");
 
-        section.style.display = "none";
+    showElement("adminDashboard");
 
-    });
-
-
-    const selectedSection =
-        document.getElementById(sectionName);
-
-    if (selectedSection) {
-
-        selectedSection.style.display = "block";
-
-    }
-
-
-    const buttons =
-        document.querySelectorAll("[data-section]");
-
-    buttons.forEach(function (button) {
-
-        button.classList.remove("active");
-
-        if (
-            button.getAttribute("data-section") ===
-            sectionName
-        ) {
-
-            button.classList.add("active");
-
-        }
-
-    });
-
-
-    if (sectionName === "products") {
-
-        loadProducts();
-
-    }
-
-
-    if (sectionName === "orders") {
-
-        loadOrders();
-
-    }
-
-
-    if (sectionName === "dashboard") {
-
-        updateDashboard();
-
-    }
-
+    loadEverything();
 }
 
 
-// =====================================================
-// PRODUCT FORM
-// =====================================================
+// ============================================================
+// LOGOUT
+// ============================================================
 
-function setupProductForm() {
+function logoutAdmin() {
 
-    const form =
-        document.getElementById("productForm");
+    adminToken = "";
 
-    if (!form) {
-        return;
+    localStorage.removeItem("rohith_admin_token");
+    localStorage.removeItem("rohith_admin_logged_in");
+
+    hideElement("adminPanel");
+
+    showElement("adminLoginScreen");
+
+    var usernameElement = getElement("adminUsername");
+    var passwordElement = getElement("adminPassword");
+
+    if (usernameElement) {
+        usernameElement.value = "";
     }
 
-    form.addEventListener("submit", function (event) {
-
-        event.preventDefault();
-
-        saveProduct();
-
-    });
-
+    if (passwordElement) {
+        passwordElement.value = "";
+    }
 }
 
 
-// =====================================================
-// SAVE PRODUCT
-// =====================================================
+// ============================================================
+// CHECK SAVED LOGIN
+// ============================================================
 
-async function saveProduct() {
+function checkSavedLogin() {
 
-    const nameInput =
-        document.getElementById("productName");
+    if (adminToken) {
 
-    const sizeInput =
-        document.getElementById("productSize");
+        openAdminPanel();
 
-    const priceInput =
-        document.getElementById("productPrice");
+    } else {
 
-    const categoryInput =
-        document.getElementById("productCategory");
-
-    const imageInput =
-        document.getElementById("productImage");
-
-    const stockInput =
-        document.getElementById("productStock");
-
-    const descriptionInput =
-        document.getElementById("productDescription");
-
-
-    const name =
-        nameInput ? nameInput.value.trim() : "";
-
-    const size =
-        sizeInput ? sizeInput.value.trim() : "";
-
-    const price =
-        priceInput ? priceInput.value : "";
-
-    const category =
-        categoryInput ? categoryInput.value.trim() : "";
-
-    const image =
-        imageInput ? imageInput.value.trim() : "";
-
-    const stock =
-        stockInput ? stockInput.value : "available";
-
-    const description =
-        descriptionInput ?
-        descriptionInput.value.trim() :
-        "";
-
-
-    if (name === "") {
-
-        alert("Please enter product name.");
-
-        return;
-
+        hideElement("adminPanel");
+        showElement("adminLoginScreen");
     }
-
-
-    if (price === "" || isNaN(price)) {
-
-        alert("Please enter a valid price.");
-
-        return;
-
-    }
-
-
-    const productData = {
-
-        name: name,
-
-        size: size,
-
-        price: Number(price),
-
-        category: category,
-
-        image: image,
-
-        stock: stock,
-
-        description: description
-
-    };
-
-
-    try {
-
-        let response;
-
-
-        if (editingProductId !== null) {
-
-            response = await fetch(
-                PRODUCTS_API + "/" + editingProductId,
-                {
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify(productData)
-                }
-            );
-
-        } else {
-
-            response = await fetch(
-                PRODUCTS_API,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify(productData)
-                }
-            );
-
-        }
-
-
-        const result =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.message ||
-                "Failed to save product."
-            );
-
-        }
-
-
-        if (editingProductId !== null) {
-
-            alert("Product updated successfully.");
-
-        } else {
-
-            alert("Product added successfully.");
-
-        }
-
-
-        editingProductId = null;
-
-        clearProductForm();
-
-        loadProducts();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not save product. Please check the backend."
-        );
-
-    }
-
 }
 
 
-// =====================================================
+// ============================================================
+// LOAD EVERYTHING
+// ============================================================
+
+function loadEverything() {
+
+    loadProducts();
+    loadOrders();
+    loadShopStatus();
+}
+
+
+// ============================================================
 // LOAD PRODUCTS
-// =====================================================
+// ============================================================
 
-async function loadProducts() {
+function loadProducts() {
 
-    try {
+    fetch(PRODUCTS_API, {
+        method: "GET",
+        headers: authHeaders()
+    })
+        .then(function(response) {
 
-        const response =
-            await fetch(PRODUCTS_API);
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
 
-        if (!response.ok) {
+            if (!response.ok) {
+                throw new Error(
+                    "Unable to load products."
+                );
+            }
 
-            throw new Error(
-                "Failed to load products."
+            return response.json();
+        })
+        .then(function(data) {
+
+            if (Array.isArray(data)) {
+                products = data;
+            } else if (Array.isArray(data.products)) {
+                products = data.products;
+            } else {
+                products = [];
+            }
+
+            renderProducts();
+            updateDashboard();
+
+        })
+        .catch(function(error) {
+
+            console.error("Products error:", error);
+
+            setText(
+                "productsTableMessage",
+                error.message
             );
-
-        }
-
-
-        products =
-            await response.json();
-
-
-        if (!Array.isArray(products)) {
-
-            products = [];
-
-        }
-
-
-        displayProducts();
-
-        updateDashboard();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        displayProductError();
-
-    }
-
+        });
 }
 
 
-// =====================================================
-// DISPLAY PRODUCTS
-// =====================================================
+// ============================================================
+// RENDER PRODUCTS
+// ============================================================
 
-function displayProducts() {
+function renderProducts() {
 
-    const container =
-        document.getElementById("productsList");
+    var tableBody =
+        getElement("productsTableBody") ||
+        getElement("productTableBody") ||
+        getElement("productsList");
 
-    if (!container) {
+    if (!tableBody) {
         return;
     }
 
-
-    container.innerHTML = "";
-
+    tableBody.innerHTML = "";
 
     if (products.length === 0) {
 
-        container.innerHTML =
-            "<p>No products found.</p>";
+        tableBody.innerHTML =
+            "<tr>" +
+            "<td colspan='8'>No products found.</td>" +
+            "</tr>";
 
         return;
-
     }
 
-
-    products.forEach(function (product) {
-
-        const card =
-            document.createElement("div");
-
-        card.className = "product-card";
-
-
-        const image =
-            product.image || "";
-
-
-        const stockText =
-            product.stock || "available";
-
-
-        card.innerHTML =
-
-            '<div class="product-image">' +
-
-                (
-                    image !== ""
-                    ?
-                    '<img src="' +
-                    escapeHtml(image) +
-                    '" alt="' +
-                    escapeHtml(product.name) +
-                    '">' 
-                    :
-                    '<div class="no-image">No Image</div>'
-                ) +
-
-            "</div>" +
-
-            '<div class="product-info">' +
-
-                "<h3>" +
-                escapeHtml(product.name) +
-                "</h3>" +
-
-                "<p>Size: " +
-                escapeHtml(product.size || "-") +
-                "</p>" +
-
-                "<p>Category: " +
-                escapeHtml(product.category || "-") +
-                "</p>" +
-
-                "<p>Price: ₹" +
-                Number(product.price || 0).toFixed(2) +
-                "</p>" +
-
-                "<p>Stock: " +
-                escapeHtml(stockText) +
-                "</p>" +
-
-                "<p>" +
-                escapeHtml(
-                    product.description || ""
-                ) +
-                "</p>" +
-
-                '<div class="product-actions">' +
-
-                    '<button type="button" ' +
-                    'onclick="editProduct(' +
-                    Number(product.id) +
-                    ')">' +
-                    "Edit" +
-                    "</button>" +
-
-                    '<button type="button" ' +
-                    'onclick="deleteProduct(' +
-                    Number(product.id) +
-                    ')">' +
-                    "Delete" +
-                    "</button>" +
-
-                "</div>" +
-
-            "</div>";
-
-
-        container.appendChild(card);
-
-    });
-
-}
-
-
-// =====================================================
-// EDIT PRODUCT
-// =====================================================
-
-function editProduct(id) {
-
-    const product =
-        products.find(function (item) {
-
-            return Number(item.id) === Number(id);
-
-        });
-
-
-    if (!product) {
-
-        alert("Product not found.");
-
-        return;
-
-    }
-
-
-    editingProductId =
-        Number(product.id);
-
-
-    const nameInput =
-        document.getElementById("productName");
-
-    const sizeInput =
-        document.getElementById("productSize");
-
-    const priceInput =
-        document.getElementById("productPrice");
-
-    const categoryInput =
-        document.getElementById("productCategory");
-
-    const imageInput =
-        document.getElementById("productImage");
-
-    const stockInput =
-        document.getElementById("productStock");
-
-    const descriptionInput =
-        document.getElementById("productDescription");
-
-
-    if (nameInput) {
-        nameInput.value =
-            product.name || "";
-    }
-
-    if (sizeInput) {
-        sizeInput.value =
-            product.size || "";
-    }
-
-    if (priceInput) {
-        priceInput.value =
-            product.price || "";
-    }
-
-    if (categoryInput) {
-        categoryInput.value =
-            product.category || "";
-    }
-
-    if (imageInput) {
-        imageInput.value =
-            product.image || "";
-    }
-
-    if (stockInput) {
-        stockInput.value =
-            product.stock || "available";
-    }
-
-    if (descriptionInput) {
-        descriptionInput.value =
-            product.description || "";
-    }
-
-
-    const submitButton =
-        document.querySelector(
-            "#productForm button[type='submit']"
-        );
-
-
-    if (submitButton) {
-
-        submitButton.textContent =
-            "Update Product";
-
-    }
-
-
-    const cancelButton =
-        document.getElementById(
-            "cancelEditButton"
-        );
-
-
-    if (cancelButton) {
-
-        cancelButton.style.display =
-            "inline-block";
-
-    }
-
-
-    const form =
-        document.getElementById("productForm");
-
-
-    if (form) {
-
-        form.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
-    }
-
-}
-
-
-// =====================================================
-// DELETE PRODUCT
-// =====================================================
-
-async function deleteProduct(id) {
-
-    const product =
-        products.find(function (item) {
-
-            return Number(item.id) === Number(id);
-
-        });
-
-
-    if (!product) {
-
-        alert("Product not found.");
-
-        return;
-
-    }
-
-
-    const confirmed =
-        confirm(
-            "Delete " +
-            product.name +
-            "?"
-        );
-
-
-    if (!confirmed) {
-
-        return;
-
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                PRODUCTS_API + "/" + id,
-                {
-                    method: "DELETE"
-                }
-            );
-
-
-        const result =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.message ||
-                "Failed to delete product."
-            );
-
+    products.forEach(function(product) {
+
+        var row = document.createElement("tr");
+
+        var id = product.id || "";
+        var name = product.name || "";
+        var size = product.size || "";
+        var price = product.price || 0;
+        var category = product.category || "";
+        var stock = product.stock || "available";
+        var description = product.description || "";
+        var image = product.image || "";
+
+        var stockText =
+            String(stock).toLowerCase() === "available"
+                ? "Available"
+                : "Out of Stock";
+
+        var imageHTML = "";
+
+        if (image) {
+            imageHTML =
+                "<img src='" +
+                escapeAttribute(image) +
+                "' " +
+                "style='width:55px;height:55px;" +
+                "object-fit:cover;border-radius:8px;' " +
+                "onerror=\"this.style.display='none'\">";
+        } else {
+            imageHTML = "No Image";
         }
 
+        row.innerHTML =
+            "<td>" + escapeHTML(id) + "</td>" +
+            "<td>" + imageHTML + "</td>" +
+            "<td>" + escapeHTML(name) + "</td>" +
+            "<td>" + escapeHTML(size) + "</td>" +
+            "<td>₹" + escapeHTML(price) + "</td>" +
+            "<td>" + escapeHTML(category) + "</td>" +
+            "<td>" + escapeHTML(stockText) + "</td>" +
+            "<td>" +
+            "<button type='button' onclick='editProduct(" +
+            id +
+            ")'>Edit</button> " +
+            "<button type='button' onclick='deleteProduct(" +
+            id +
+            ")'>Delete</button>" +
+            "</td>";
 
-        alert("Product deleted successfully.");
-
-        loadProducts();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not delete product."
-        );
-
-    }
-
+        tableBody.appendChild(row);
+    });
 }
 
 
-// =====================================================
-// CLEAR PRODUCT FORM
-// =====================================================
+// ============================================================
+// ESCAPE HTML
+// ============================================================
 
-function clearProductForm() {
+function escapeHTML(value) {
 
-    const form =
-        document.getElementById("productForm");
+    var div = document.createElement("div");
 
+    div.textContent = String(value);
 
-    if (form) {
-
-        form.reset();
-
-    }
-
-
-    editingProductId = null;
-
-
-    const submitButton =
-        document.querySelector(
-            "#productForm button[type='submit']"
-        );
-
-
-    if (submitButton) {
-
-        submitButton.textContent =
-            "Add Product";
-
-    }
-
-
-    const cancelButton =
-        document.getElementById(
-            "cancelEditButton"
-        );
-
-
-    if (cancelButton) {
-
-        cancelButton.style.display =
-            "none";
-
-    }
-
+    return div.innerHTML;
 }
 
 
-// =====================================================
-// CANCEL EDIT
-// =====================================================
+function escapeAttribute(value) {
 
-document.addEventListener(
-    "click",
-    function (event) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
 
-        if (
-            event.target &&
-            event.target.id ===
-            "cancelEditButton"
-        ) {
+
+// ============================================================
+// ADD PRODUCT
+// ============================================================
+
+function addProduct() {
+
+    var nameElement = getElement("productName");
+    var sizeElement = getElement("productSize");
+    var priceElement = getElement("productPrice");
+    var categoryElement = getElement("productCategory");
+    var imageElement = getElement("productImage");
+    var stockElement = getElement("productStock");
+    var descriptionElement = getElement("productDescription");
+
+    if (!nameElement || !priceElement) {
+        showMessage(
+            "Product form was not found. Check your HTML IDs."
+        );
+
+        return;
+    }
+
+    var name = nameElement.value.trim();
+    var size = sizeElement ? sizeElement.value.trim() : "";
+    var price = priceElement.value;
+    var category =
+        categoryElement
+            ? categoryElement.value.trim()
+            : "";
+
+    var image =
+        imageElement
+            ? imageElement.value.trim()
+            : "";
+
+    var stock =
+        stockElement
+            ? stockElement.value
+            : "available";
+
+    var description =
+        descriptionElement
+            ? descriptionElement.value.trim()
+            : "";
+
+    if (name === "") {
+        showMessage("Enter product name.");
+        return;
+    }
+
+    if (price === "" || Number(price) < 0) {
+        showMessage("Enter a valid price.");
+        return;
+    }
+
+    var productData = {
+        name: name,
+        size: size,
+        price: Number(price),
+        category: category,
+        image: image,
+        stock: stock,
+        description: description
+    };
+
+    fetch(PRODUCTS_API, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(productData)
+    })
+        .then(function(response) {
+
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
+
+            return response.text().then(function(text) {
+
+                var data = {};
+
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
+                }
+
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function(result) {
+
+            if (!result.ok) {
+                throw new Error(
+                    result.data.message ||
+                    result.data.error ||
+                    "Unable to add product."
+                );
+            }
+
+            showMessage("Product added successfully.");
 
             clearProductForm();
 
-        }
+            loadProducts();
 
-    }
-);
+        })
+        .catch(function(error) {
 
+            console.error("Add product error:", error);
 
-// =====================================================
-// LOAD ORDERS
-// =====================================================
-
-async function loadOrders() {
-
-    try {
-
-        const response =
-            await fetch(ORDERS_API);
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load orders."
-            );
-
-        }
-
-
-        orders =
-            await response.json();
-
-
-        if (!Array.isArray(orders)) {
-
-            orders = [];
-
-        }
-
-
-        displayOrders();
-
-        updateDashboard();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        displayOrderError();
-
-    }
-
+            showMessage(error.message);
+        });
 }
 
 
-// =====================================================
-// DISPLAY ORDERS
-// =====================================================
+// ============================================================
+// EDIT PRODUCT
+// ============================================================
 
-function displayOrders() {
+function editProduct(id) {
 
-    const container =
-        document.getElementById("ordersList");
+    var product = products.find(function(item) {
 
+        return Number(item.id) === Number(id);
+    });
 
-    if (!container) {
-
+    if (!product) {
+        showMessage("Product not found.");
         return;
-
     }
 
+    var name = prompt(
+        "Product name:",
+        product.name || ""
+    );
 
-    container.innerHTML = "";
+    if (name === null) {
+        return;
+    }
 
+    var size = prompt(
+        "Size:",
+        product.size || ""
+    );
+
+    if (size === null) {
+        return;
+    }
+
+    var price = prompt(
+        "Price:",
+        product.price || ""
+    );
+
+    if (price === null) {
+        return;
+    }
+
+    var category = prompt(
+        "Category:",
+        product.category || ""
+    );
+
+    if (category === null) {
+        return;
+    }
+
+    var image = prompt(
+        "Image URL:",
+        product.image || ""
+    );
+
+    if (image === null) {
+        return;
+    }
+
+    var description = prompt(
+        "Description:",
+        product.description || ""
+    );
+
+    if (description === null) {
+        return;
+    }
+
+    var stock = prompt(
+        "Stock status: available or out_of_stock",
+        product.stock || "available"
+    );
+
+    if (stock === null) {
+        return;
+    }
+
+    var updatedProduct = {
+        name: name.trim(),
+        size: size.trim(),
+        price: Number(price),
+        category: category.trim(),
+        image: image.trim(),
+        stock: stock.trim(),
+        description: description.trim()
+    };
+
+    fetch(PRODUCTS_API + "/" + id, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify(updatedProduct)
+    })
+        .then(function(response) {
+
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
+
+            return response.text().then(function(text) {
+
+                var data = {};
+
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
+                }
+
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function(result) {
+
+            if (!result.ok) {
+                throw new Error(
+                    result.data.message ||
+                    result.data.error ||
+                    "Unable to update product."
+                );
+            }
+
+            showMessage("Product updated successfully.");
+
+            loadProducts();
+
+        })
+        .catch(function(error) {
+
+            console.error("Edit product error:", error);
+
+            showMessage(error.message);
+        });
+}
+
+
+// ============================================================
+// DELETE PRODUCT
+// ============================================================
+
+function deleteProduct(id) {
+
+    var product = products.find(function(item) {
+
+        return Number(item.id) === Number(id);
+    });
+
+    var productName =
+        product && product.name
+            ? product.name
+            : "this product";
+
+    var confirmed = confirm(
+        "Are you sure you want to delete " +
+        productName +
+        "?"
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    fetch(PRODUCTS_API + "/" + id, {
+        method: "DELETE",
+        headers: authHeaders()
+    })
+        .then(function(response) {
+
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
+
+            return response.text().then(function(text) {
+
+                var data = {};
+
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
+                }
+
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function(result) {
+
+            if (!result.ok) {
+                throw new Error(
+                    result.data.message ||
+                    result.data.error ||
+                    "Unable to delete product."
+                );
+            }
+
+            showMessage("Product deleted successfully.");
+
+            loadProducts();
+
+        })
+        .catch(function(error) {
+
+            console.error("Delete product error:", error);
+
+            showMessage(error.message);
+        });
+}
+
+
+// ============================================================
+// CLEAR PRODUCT FORM
+// ============================================================
+
+function clearProductForm() {
+
+    var ids = [
+        "productName",
+        "productSize",
+        "productPrice",
+        "productCategory",
+        "productImage",
+        "productDescription"
+    ];
+
+    ids.forEach(function(id) {
+
+        var element = getElement(id);
+
+        if (element) {
+            element.value = "";
+        }
+    });
+
+    var stockElement = getElement("productStock");
+
+    if (stockElement) {
+        stockElement.value = "available";
+    }
+}
+
+
+// ============================================================
+// LOAD ORDERS
+// ============================================================
+
+function loadOrders() {
+
+    fetch(ORDERS_API, {
+        method: "GET",
+        headers: authHeaders()
+    })
+        .then(function(response) {
+
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    "Unable to load orders."
+                );
+            }
+
+            return response.json();
+        })
+        .then(function(data) {
+
+            if (Array.isArray(data)) {
+                orders = data;
+            } else if (Array.isArray(data.orders)) {
+                orders = data.orders;
+            } else {
+                orders = [];
+            }
+
+            renderOrders();
+            updateDashboard();
+
+        })
+        .catch(function(error) {
+
+            console.error("Orders error:", error);
+
+            setText(
+                "ordersTableMessage",
+                error.message
+            );
+        });
+}
+
+
+// ============================================================
+// RENDER ORDERS
+// ============================================================
+
+function renderOrders() {
+
+    var tableBody =
+        getElement("ordersTableBody") ||
+        getElement("orderTableBody") ||
+        getElement("ordersList");
+
+    if (!tableBody) {
+        return;
+    }
+
+    tableBody.innerHTML = "";
 
     if (orders.length === 0) {
 
-        container.innerHTML =
-            "<p>No orders found.</p>";
+        tableBody.innerHTML =
+            "<tr>" +
+            "<td colspan='10'>No orders found.</td>" +
+            "</tr>";
 
         return;
-
     }
 
+    orders.forEach(function(order) {
 
-    orders.forEach(function (order) {
+        var row = document.createElement("tr");
 
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "order-card";
-
-
-        const orderId =
-            order.id || "";
-
-
-        const customerName =
+        var id = order.id || "";
+        var customerName =
             order.customer_name ||
             order.customerName ||
             order.name ||
-            "Customer";
+            "";
 
-
-        const phone =
+        var phone =
             order.phone ||
-            order.customer_phone ||
-            "-";
+            order.mobile ||
+            "";
 
-
-        const address =
+        var address =
             order.address ||
-            "-";
+            "";
 
+        var total =
+            order.total ||
+            order.amount ||
+            0;
 
-        const total =
-            Number(
-                order.total ||
-                order.total_amount ||
-                0
-            );
-
-
-        const status =
+        var status =
             order.status ||
             "pending";
 
+        var created =
+            order.created_at ||
+            order.createdAt ||
+            "";
 
-        card.innerHTML =
+        var items =
+            order.items ||
+            order.products ||
+            "";
 
-            "<h3>Order #" +
-            escapeHtml(String(orderId)) +
-            "</h3>" +
+        if (typeof items === "object") {
+            items = JSON.stringify(items);
+        }
 
-            "<p><strong>Customer:</strong> " +
-            escapeHtml(customerName) +
-            "</p>" +
+        row.innerHTML =
+            "<td>" + escapeHTML(id) + "</td>" +
+            "<td>" + escapeHTML(customerName) + "</td>" +
+            "<td>" + escapeHTML(phone) + "</td>" +
+            "<td>" + escapeHTML(address) + "</td>" +
+            "<td>" + escapeHTML(items) + "</td>" +
+            "<td>₹" + escapeHTML(total) + "</td>" +
+            "<td>" + escapeHTML(created) + "</td>" +
+            "<td>" +
+            createStatusSelect(id, status) +
+            "</td>" +
+            "<td>" +
+            "<button type='button' " +
+            "onclick='updateOrderStatus(" +
+            id +
+            ")'>" +
+            "Update" +
+            "</button>" +
+            "</td>";
 
-            "<p><strong>Phone:</strong> " +
-            escapeHtml(phone) +
-            "</p>" +
-
-            "<p><strong>Address:</strong> " +
-            escapeHtml(address) +
-            "</p>" +
-
-            "<p><strong>Total:</strong> ₹" +
-            total.toFixed(2) +
-            "</p>" +
-
-            "<p><strong>Status:</strong> " +
-            escapeHtml(status) +
-            "</p>" +
-
-            '<div class="order-actions">' +
-
-                '<select onchange="changeOrderStatus(' +
-                Number(orderId) +
-                ', this.value)">' +
-
-                    '<option value="pending"' +
-                    (
-                        status === "pending"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Pending</option>" +
-
-                    '<option value="confirmed"' +
-                    (
-                        status === "confirmed"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Confirmed</option>" +
-
-                    '<option value="preparing"' +
-                    (
-                        status === "preparing"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Preparing</option>" +
-
-                    '<option value="out_for_delivery"' +
-                    (
-                        status === "out_for_delivery"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Out for Delivery</option>" +
-
-                    '<option value="delivered"' +
-                    (
-                        status === "delivered"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Delivered</option>" +
-
-                    '<option value="cancelled"' +
-                    (
-                        status === "cancelled"
-                        ? " selected"
-                        : ""
-                    ) +
-                    ">Cancelled</option>" +
-
-                "</select>" +
-
-            "</div>";
+        tableBody.appendChild(row);
+    });
+}
 
 
-        container.appendChild(card);
+// ============================================================
+// ORDER STATUS SELECT
+// ============================================================
 
+function createStatusSelect(id, currentStatus) {
+
+    var statuses = [
+        "pending",
+        "confirmed",
+        "preparing",
+        "out_for_delivery",
+        "delivered",
+        "cancelled"
+    ];
+
+    var html =
+        "<select id='orderStatus_" +
+        id +
+        "'>";
+
+    statuses.forEach(function(status) {
+
+        var selected =
+            status === currentStatus
+                ? " selected"
+                : "";
+
+        html +=
+            "<option value='" +
+            status +
+            "'" +
+            selected +
+            ">" +
+            formatStatus(status) +
+            "</option>";
     });
 
+    html += "</select>";
+
+    return html;
 }
 
 
-// =====================================================
-// CHANGE ORDER STATUS
-// =====================================================
+// ============================================================
+// FORMAT STATUS
+// ============================================================
 
-async function changeOrderStatus(
-    orderId,
-    newStatus
-) {
+function formatStatus(status) {
 
-    if (!orderId) {
+    return String(status)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, function(letter) {
+            return letter.toUpperCase();
+        });
+}
 
-        alert("Invalid order ID.");
 
+// ============================================================
+// UPDATE ORDER STATUS
+// ============================================================
+
+function updateOrderStatus(id) {
+
+    var select =
+        getElement("orderStatus_" + id);
+
+    if (!select) {
+        showMessage("Order status selector not found.");
         return;
-
     }
 
+    var newStatus = select.value;
 
-    try {
+    fetch(ORDERS_API + "/" + id + "/status", {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({
+            status: newStatus
+        })
+    })
+        .then(function(response) {
 
-        const response =
-            await fetch(
-                ORDERS_API + "/" + orderId,
-                {
-                    method: "PUT",
+            if (response.status === 401) {
+                logoutAdmin();
+                throw new Error("Login session expired.");
+            }
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+            return response.text().then(function(text) {
 
-                    body: JSON.stringify({
-                        status: newStatus
-                    })
+                var data = {};
 
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
                 }
+
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function(result) {
+
+            if (!result.ok) {
+                throw new Error(
+                    result.data.message ||
+                    result.data.error ||
+                    "Unable to update order status."
+                );
+            }
+
+            showMessage(
+                "Order status updated successfully."
             );
 
+            loadOrders();
 
-        const result =
-            await response.json();
+        })
+        .catch(function(error) {
 
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.message ||
-                "Failed to update order."
+            console.error(
+                "Order status error:",
+                error
             );
 
-        }
-
-
-        alert(
-            "Order status updated successfully."
-        );
-
-
-        loadOrders();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not update order status. " +
-            "Please check the backend."
-        );
-
-    }
-
+            showMessage(error.message);
+        });
 }
 
 
-// =====================================================
-// SHOP STATUS
-// =====================================================
-
-function setupShopStatus() {
-
-    const button =
-        document.getElementById(
-            "shopStatusButton"
-        );
-
-
-    if (!button) {
-
-        return;
-
-    }
-
-
-    button.addEventListener(
-        "click",
-        toggleShopStatus
-    );
-
-
-    loadShopStatus();
-
-}
-
-
-// =====================================================
+// ============================================================
 // LOAD SHOP STATUS
-// =====================================================
+// ============================================================
 
-async function loadShopStatus() {
+function loadShopStatus() {
 
-    try {
+    fetch(SHOP_STATUS_API, {
+        method: "GET",
+        headers: authHeaders()
+    })
+        .then(function(response) {
 
-        const response =
-            await fetch(
-                SHOP_STATUS_API
+            if (!response.ok) {
+                throw new Error(
+                    "Unable to load shop status."
+                );
+            }
+
+            return response.json();
+        })
+        .then(function(data) {
+
+            if (typeof data.open === "boolean") {
+                shopOpen = data.open;
+            } else if (
+                typeof data.shopOpen === "boolean"
+            ) {
+                shopOpen = data.shopOpen;
+            } else if (
+                typeof data.isOpen === "boolean"
+            ) {
+                shopOpen = data.isOpen;
+            }
+
+            updateShopStatusUI();
+        })
+        .catch(function(error) {
+
+            console.error(
+                "Shop status error:",
+                error
             );
-
-
-        if (!response.ok) {
-
-            return;
-
-        }
-
-
-        const data =
-            await response.json();
-
-
-        updateShopStatusDisplay(
-            data
-        );
-
-
-    } catch (error) {
-
-        console.error(error);
-
-    }
-
+        });
 }
 
 
-// =====================================================
-// TOGGLE SHOP STATUS
-// =====================================================
+// ============================================================
+// UPDATE SHOP STATUS UI
+// ============================================================
 
-async function toggleShopStatus() {
+function updateShopStatusUI() {
 
-    try {
-
-        const currentResponse =
-            await fetch(
-                SHOP_STATUS_API
-            );
-
-
-        if (!currentResponse.ok) {
-
-            throw new Error(
-                "Could not get shop status."
-            );
-
-        }
-
-
-        const currentData =
-            await currentResponse.json();
-
-
-        const currentStatus =
-            currentData.open === true ||
-            currentData.status === "open";
-
-
-        const newStatus =
-            !currentStatus;
-
-
-        const response =
-            await fetch(
-                SHOP_STATUS_API,
-                {
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        open: newStatus
-                    })
-
-                }
-            );
-
-
-        const result =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.message ||
-                "Could not update shop status."
-            );
-
-        }
-
-
-        updateShopStatusDisplay(
-            result
-        );
-
-
-        alert(
-            newStatus
-            ? "Shop is now OPEN."
-            : "Shop is now CLOSED."
-        );
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not change shop status."
-        );
-
-    }
-
-}
-
-
-// =====================================================
-// UPDATE SHOP STATUS DISPLAY
-// =====================================================
-
-function updateShopStatusDisplay(data) {
-
-    const statusText =
-        document.getElementById(
-            "shopStatusText"
-        );
-
-
-    const button =
-        document.getElementById(
-            "shopStatusButton"
-        );
-
-
-    const isOpen =
-        data &&
-        (
-            data.open === true ||
-            data.status === "open"
-        );
-
-
-    if (statusText) {
-
-        statusText.textContent =
-            isOpen
+    var statusText =
+        shopOpen
             ? "Shop Open"
             : "Shop Closed";
 
+    var statusElement =
+        getElement("shopStatusText");
+
+    if (statusElement) {
+        statusElement.textContent = statusText;
     }
 
+    var button =
+        getElement("shopStatusButton");
 
     if (button) {
 
         button.textContent =
-            isOpen
-            ? "Close Shop"
-            : "Open Shop";
-
+            shopOpen
+                ? "Close Shop"
+                : "Open Shop";
     }
 
+    var checkbox =
+        getElement("shopOpenCheckbox");
+
+    if (checkbox) {
+        checkbox.checked = shopOpen;
+    }
 }
 
 
-// =====================================================
+// ============================================================
+// TOGGLE SHOP STATUS
+// ============================================================
+
+function toggleShopStatus() {
+
+    var newStatus = !shopOpen;
+
+    fetch(SHOP_STATUS_API, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({
+            open: newStatus
+        })
+    })
+        .then(function(response) {
+
+            if (!response.ok) {
+                return fetch(SHOP_STATUS_API, {
+                    method: "POST",
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        open: newStatus
+                    })
+                });
+            }
+
+            return response;
+        })
+        .then(function(response) {
+
+            if (!response.ok) {
+                throw new Error(
+                    "Unable to change shop status."
+                );
+            }
+
+            return response.json();
+        })
+        .then(function(data) {
+
+            if (typeof data.open === "boolean") {
+                shopOpen = data.open;
+            } else {
+                shopOpen = newStatus;
+            }
+
+            updateShopStatusUI();
+
+            showMessage(
+                shopOpen
+                    ? "Shop is now OPEN."
+                    : "Shop is now CLOSED."
+            );
+
+        })
+        .catch(function(error) {
+
+            console.error(
+                "Toggle shop error:",
+                error
+            );
+
+            showMessage(error.message);
+        });
+}
+
+
+// ============================================================
 // DASHBOARD
-// =====================================================
+// ============================================================
 
 function updateDashboard() {
 
-    const totalProducts =
-        document.getElementById(
-            "totalProducts"
-        );
+    setText(
+        "totalProducts",
+        products.length
+    );
 
+    setText(
+        "totalOrders",
+        orders.length
+    );
 
-    const totalOrders =
-        document.getElementById(
-            "totalOrders"
-        );
+    var pendingCount = orders.filter(function(order) {
 
+        return String(order.status).toLowerCase() === "pending";
 
-    const pendingOrders =
-        document.getElementById(
-            "pendingOrders"
-        );
+    }).length;
 
+    setText(
+        "pendingOrders",
+        pendingCount
+    );
 
-    const deliveredOrders =
-        document.getElementById(
-            "deliveredOrders"
-        );
+    var deliveredCount = orders.filter(function(order) {
 
+        return String(order.status).toLowerCase() === "delivered";
 
-    if (totalProducts) {
+    }).length;
 
-        totalProducts.textContent =
-            products.length;
-
-    }
-
-
-    if (totalOrders) {
-
-        totalOrders.textContent =
-            orders.length;
-
-    }
-
-
-    if (pendingOrders) {
-
-        const count =
-            orders.filter(function (order) {
-
-                return (
-                    order.status ===
-                    "pending"
-                );
-
-            }).length;
-
-
-        pendingOrders.textContent =
-            count;
-
-    }
-
-
-    if (deliveredOrders) {
-
-        const count =
-            orders.filter(function (order) {
-
-                return (
-                    order.status ===
-                    "delivered"
-                );
-
-            }).length;
-
-
-        deliveredOrders.textContent =
-            count;
-
-    }
-
+    setText(
+        "deliveredOrders",
+        deliveredCount
+    );
 }
 
 
-// =====================================================
-// ERROR DISPLAY
-// =====================================================
+// ============================================================
+// SECTION NAVIGATION
+// ============================================================
 
-function displayProductError() {
+function showSection(sectionName) {
 
-    const container =
-        document.getElementById(
-            "productsList"
-        );
+    var sections = [
+        "adminDashboard",
+        "dashboardSection",
+        "productsSection",
+        "ordersSection",
+        "settingsSection"
+    ];
 
+    sections.forEach(function(id) {
 
-    if (container) {
+        var element = getElement(id);
 
-        container.innerHTML =
-            "<p>Unable to load products. " +
-            "Please check the backend.</p>";
+        if (element) {
+            element.style.display = "none";
+        }
+    });
 
+    var target = getElement(sectionName);
+
+    if (target) {
+        target.style.display = "";
     }
 
-}
-
-
-// =====================================================
-// ORDER ERROR
-// =====================================================
-
-function displayOrderError() {
-
-    const container =
-        document.getElementById(
-            "ordersList"
-        );
-
-
-    if (container) {
-
-        container.innerHTML =
-            "<p>Unable to load orders. " +
-            "Please check the backend.</p>";
-
+    if (
+        sectionName === "productsSection"
+    ) {
+        loadProducts();
     }
 
+    if (
+        sectionName === "ordersSection"
+    ) {
+        loadOrders();
+    }
+
+    if (
+        sectionName === "settingsSection"
+    ) {
+        loadShopStatus();
+    }
 }
 
 
-// =====================================================
-// HTML ESCAPE
-// =====================================================
+// ============================================================
+// BUTTON ALIASES
+// ============================================================
 
-function escapeHtml(value) {
-
-    const div =
-        document.createElement("div");
-
-
-    div.textContent =
-        value === null ||
-        value === undefined
-        ? ""
-        : String(value);
-
-
-    return div.innerHTML;
-
+function showDashboard() {
+    showSection("adminDashboard");
 }
 
 
-// =====================================================
+function showProducts() {
+    showSection("productsSection");
+}
+
+
+function showOrders() {
+    showSection("ordersSection");
+}
+
+
+function showSettings() {
+    showSection("settingsSection");
+}
+
+
+// ============================================================
+// PAGE START
+// ============================================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        var loginForm =
+            getElement("adminLoginForm");
+
+        if (loginForm) {
+
+            loginForm.addEventListener(
+                "submit",
+                loginAdmin
+            );
+        }
+
+        var loginButton =
+            getElement("loginButton");
+
+        if (loginButton) {
+
+            loginButton.addEventListener(
+                "click",
+                loginAdmin
+            );
+        }
+
+        var logoutButton =
+            getElement("logoutButton");
+
+        if (logoutButton) {
+
+            logoutButton.addEventListener(
+                "click",
+                logoutAdmin
+            );
+        }
+
+        var addButton =
+            getElement("addProductButton");
+
+        if (addButton) {
+
+            addButton.addEventListener(
+                "click",
+                addProduct
+            );
+        }
+
+        var shopButton =
+            getElement("shopStatusButton");
+
+        if (shopButton) {
+
+            shopButton.addEventListener(
+                "click",
+                toggleShopStatus
+            );
+        }
+
+        checkSavedLogin();
+    }
+);
+
+
+// ============================================================
 // MAKE FUNCTIONS AVAILABLE TO HTML
-// =====================================================
+// ============================================================
 
-window.editProduct =
-    editProduct;
+window.loginAdmin = loginAdmin;
+window.logoutAdmin = logoutAdmin;
 
-window.deleteProduct =
-    deleteProduct;
+window.addProduct = addProduct;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
 
-window.changeOrderStatus =
-    changeOrderStatus;
+window.loadProducts = loadProducts;
+window.loadOrders = loadOrders;
+window.loadShopStatus = loadShopStatus;
 
-window.clearProductForm =
-    clearProductForm;
+window.updateOrderStatus = updateOrderStatus;
+window.toggleShopStatus = toggleShopStatus;
+
+window.showSection = showSection;
+window.showDashboard = showDashboard;
+window.showProducts = showProducts;
+window.showOrders = showOrders;
+window.showSettings = showSettings;
