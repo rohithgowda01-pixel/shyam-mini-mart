@@ -18,12 +18,13 @@
       <div class="logo">
         <span class="logo-icon">🛒</span>
         <div>
-          <h1>Rohith Mini Mart</h1>
-          <p>Your daily essentials</p>
+          <h1>Village Mart</h1>
+          <p>Your Local Store, Just a Click Away</p>
         </div>
       </div>
 
       <div class="header-actions">
+
         <button class="track-btn" onclick="openTrackOrder()">
           📦 Track Order
         </button>
@@ -32,6 +33,7 @@
           🛒 Cart
           <span id="cartCount">0</span>
         </button>
+
       </div>
 
     </div>
@@ -40,22 +42,27 @@
 
   <!-- ================= HERO ================= -->
   <section class="hero">
+
     <div class="hero-content">
 
-      <h2>Shop your daily essentials</h2>
+      <h2>Welcome to Village Mart</h2>
 
       <p>
-        Groceries, dairy, snacks, drinks and household products
-        delivered to your doorstep.
+        Fresh groceries, daily essentials, snacks, beverages and more —
+        all at your convenience. Shop from Village Mart and get your
+        essentials delivered to your doorstep.
       </p>
 
       <div class="shop-status-wrapper">
-        <span id="shopStatus" class="shop-status open">
-          🟢 Shop Open
+
+        <span id="shopStatus" class="shop-status">
+          Checking shop status...
         </span>
+
       </div>
 
     </div>
+
   </section>
 
 
@@ -63,12 +70,14 @@
   <section class="shop-section">
 
     <div class="search-box">
+
       <input
         type="text"
         id="productSearch"
         placeholder="🔍 Search for products..."
         oninput="searchProducts()"
       />
+
     </div>
 
 
@@ -129,8 +138,13 @@
 
     <!-- ================= PRODUCTS ================= -->
     <div class="products-header">
+
       <h2>Products</h2>
-      <p id="productResultText">Loading products...</p>
+
+      <p id="productResultText">
+        Loading products...
+      </p>
+
     </div>
 
     <div id="productGrid" class="product-grid"></div>
@@ -148,6 +162,7 @@
     <div class="side-panel cart-panel">
 
       <div class="panel-header">
+
         <h2>🛒 Your Cart</h2>
 
         <button
@@ -157,19 +172,21 @@
         >
           ×
         </button>
+
       </div>
 
-      <div id="cartItems" class="cart-items">
-        <!-- Cart items appear here -->
-      </div>
+      <div id="cartItems" class="cart-items"></div>
 
       <div class="cart-footer">
 
         <div class="cart-total-row">
+
           <span>Total</span>
+
           <strong>
             ₹<span id="cartTotal">0.00</span>
           </strong>
+
         </div>
 
         <button
@@ -211,9 +228,13 @@
       </div>
 
 
-      <form id="checkoutForm" onsubmit="placeOrder(event)">
+      <form
+        id="checkoutForm"
+        onsubmit="placeOrder(event)"
+      >
 
         <div class="form-group">
+
           <label for="customerName">
             Full Name
           </label>
@@ -224,10 +245,12 @@
             placeholder="Enter your name"
             required
           />
+
         </div>
 
 
         <div class="form-group">
+
           <label for="customerPhone">
             Phone Number
           </label>
@@ -240,10 +263,12 @@
             pattern="[0-9]{10}"
             required
           />
+
         </div>
 
 
         <div class="form-group">
+
           <label for="customerAddress">
             Delivery Address
           </label>
@@ -254,10 +279,12 @@
             placeholder="Enter your complete delivery address"
             required
           ></textarea>
+
         </div>
 
 
         <div class="form-group">
+
           <label for="paymentMethod">
             Payment Method
           </label>
@@ -321,7 +348,7 @@
       <h2>Order Placed Successfully!</h2>
 
       <p>
-        Thank you for shopping with Rohith Mini Mart.
+        Thank you for shopping with Village Mart.
       </p>
 
       <div class="order-id-box">
@@ -418,7 +445,6 @@
         </form>
 
 
-        <!-- Tracking result -->
         <div id="trackingResult"></div>
 
       </div>
@@ -434,22 +460,33 @@
     <div class="footer-content">
 
       <div>
-        <h3>Rohith Mini Mart</h3>
+
+        <h3>Village Mart</h3>
+
         <p>
           Your local store for everyday essentials.
         </p>
+
       </div>
 
+
       <div>
+
         <p>🛒 Quality Products</p>
+
         <p>🚚 Home Delivery</p>
+
         <p>📦 Easy Ordering</p>
+
       </div>
 
     </div>
 
+
     <div class="footer-bottom">
-      © 2026 Rohith Mini Mart. All rights reserved.
+
+      © 2026 Village Mart. All rights reserved.
+
     </div>
 
   </footer>

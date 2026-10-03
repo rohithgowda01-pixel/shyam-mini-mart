@@ -1,5 +1,5 @@
 // =====================================================
-// ROHITH MINI MART - CUSTOMER WEBSITE
+// VILLAGE MART - CUSTOMER WEBSITE
 // =====================================================
 
 // LIVE BACKEND
@@ -21,7 +21,7 @@ let lastOrderId = null;
 
 // =====================================================
 // SAMPLE PRODUCTS
-// These are used only if backend has no products
+// Used only if backend has no products
 // =====================================================
 
 const sampleProducts = [
@@ -115,14 +115,25 @@ const sampleProducts = [
 document.addEventListener("DOMContentLoaded", function () {
 
     loadProducts();
+
     loadShopStatus();
+
     updateCartCount();
 
-    var searchInput = document.getElementById("productSearch");
+    var searchInput =
+        document.getElementById("productSearch");
 
     if (searchInput) {
-        searchInput.addEventListener("input", searchProducts);
+        searchInput.addEventListener(
+            "input",
+            searchProducts
+        );
     }
+
+    // Check shop status every 10 seconds
+    setInterval(function () {
+        loadShopStatus();
+    }, 10000);
 
 });
 
@@ -133,23 +144,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
 async function loadProducts() {
 
-    var productGrid = document.getElementById("productGrid");
-    var resultText = document.getElementById("productResultText");
+    var productGrid =
+        document.getElementById("productGrid");
+
+    var resultText =
+        document.getElementById("productResultText");
 
     if (productGrid) {
+
         productGrid.innerHTML =
             '<div class="loading">Loading products...</div>';
+
     }
 
     try {
 
-        var response = await fetch(API_URL);
+        var response =
+            await fetch(API_URL);
 
         if (!response.ok) {
             throw new Error("Unable to load products");
         }
 
-        var data = await response.json();
+        var data =
+            await response.json();
 
         if (Array.isArray(data) && data.length > 0) {
 
@@ -165,21 +183,20 @@ async function loadProducts() {
 
     } catch (error) {
 
-        console.error("Product loading error:", error);
-
-        /*
-         * If backend temporarily takes time to wake up,
-         * show sample products instead of staying on
-         * Loading products forever.
-         */
+        console.error(
+            "Product loading error:",
+            error
+        );
 
         products = sampleProducts;
 
         displayProducts(products);
 
         if (resultText) {
+
             resultText.textContent =
                 products.length + " products";
+
         }
 
     }
@@ -193,8 +210,11 @@ async function loadProducts() {
 
 function displayProducts(productList) {
 
-    var productGrid = document.getElementById("productGrid");
-    var resultText = document.getElementById("productResultText");
+    var productGrid =
+        document.getElementById("productGrid");
+
+    var resultText =
+        document.getElementById("productResultText");
 
     if (!productGrid) {
         return;
@@ -219,21 +239,19 @@ function displayProducts(productList) {
             '</div>';
 
         return;
+
     }
 
-
     var html = "";
-
 
     productList.forEach(function (product) {
 
         var isAvailable =
-            String(product.stock || "available").toLowerCase() ===
-            "available";
-
+            String(
+                product.stock || "available"
+            ).toLowerCase() === "available";
 
         var imageHTML = "";
-
 
         if (product.image) {
 
@@ -243,7 +261,6 @@ function displayProducts(productList) {
                 '" alt="' +
                 escapeHTML(product.name) +
                 '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">' +
-
                 '<div class="product-image-placeholder" style="display:none;">' +
                 "🛒" +
                 "</div>";
@@ -257,7 +274,6 @@ function displayProducts(productList) {
 
         }
 
-
         var sizeHTML = "";
 
         if (product.size) {
@@ -268,7 +284,6 @@ function displayProducts(productList) {
                 "</p>";
 
         }
-
 
         var descriptionHTML = "";
 
@@ -281,9 +296,7 @@ function displayProducts(productList) {
 
         }
 
-
         var buttonHTML = "";
-
 
         if (isAvailable) {
 
@@ -303,7 +316,6 @@ function displayProducts(productList) {
                 "</button>";
 
         }
-
 
         html +=
             '<div class="product-card">' +
@@ -343,7 +355,6 @@ function displayProducts(productList) {
 
     });
 
-
     productGrid.innerHTML = html;
 
 }
@@ -362,10 +373,8 @@ function searchProducts() {
         return;
     }
 
-
     var searchText =
         searchInput.value.toLowerCase().trim();
-
 
     var filteredProducts =
         products.filter(function (product) {
@@ -382,27 +391,22 @@ function searchProducts() {
             var size =
                 String(product.size || "").toLowerCase();
 
-
             var matchesSearch =
                 name.includes(searchText) ||
                 category.includes(searchText) ||
                 description.includes(searchText) ||
                 size.includes(searchText);
 
-
             var productCategory =
                 String(product.category || "").toLowerCase();
-
 
             var matchesCategory =
                 selectedCategory === "all" ||
                 productCategory === selectedCategory;
 
-
             return matchesSearch && matchesCategory;
 
         });
-
 
     displayProducts(filteredProducts);
 
@@ -417,10 +421,8 @@ function filterCategory(category, button) {
 
     selectedCategory = category;
 
-
     var buttons =
         document.querySelectorAll(".category-btn");
-
 
     buttons.forEach(function (btn) {
 
@@ -428,13 +430,11 @@ function filterCategory(category, button) {
 
     });
 
-
     if (button) {
 
         button.classList.add("active");
 
     }
-
 
     searchProducts();
 
@@ -447,6 +447,14 @@ function filterCategory(category, button) {
 
 function addToCart(productId) {
 
+    if (!shopOpen) {
+
+        alert("Shop is currently closed.");
+
+        return;
+
+    }
+
     var product =
         products.find(function (item) {
 
@@ -454,34 +462,36 @@ function addToCart(productId) {
 
         });
 
-
     if (!product) {
 
         alert("Product not found.");
+
         return;
 
     }
 
-
     var stock =
-        String(product.stock || "available").toLowerCase();
-
+        String(
+            product.stock || "available"
+        ).toLowerCase();
 
     if (stock !== "available") {
 
-        alert("This product is currently out of stock.");
+        alert(
+            "This product is currently out of stock."
+        );
+
         return;
 
     }
-
 
     var existingItem =
         cart.find(function (item) {
 
-            return Number(item.id) === Number(product.id);
+            return Number(item.id) ===
+                Number(product.id);
 
         });
-
 
     if (existingItem) {
 
@@ -507,10 +517,12 @@ function addToCart(productId) {
 
     }
 
-
     updateCartCount();
 
-    alert(product.name + " added to cart.");
+    alert(
+        product.name +
+        " added to cart."
+    );
 
 }
 
@@ -524,12 +536,13 @@ function removeFromCart(productId) {
     cart =
         cart.filter(function (item) {
 
-            return Number(item.id) !== Number(productId);
+            return Number(item.id) !==
+                Number(productId);
 
         });
 
-
     updateCartCount();
+
     renderCart();
 
 }
@@ -544,19 +557,19 @@ function increaseQuantity(productId) {
     var item =
         cart.find(function (item) {
 
-            return Number(item.id) === Number(productId);
+            return Number(item.id) ===
+                Number(productId);
 
         });
-
 
     if (!item) {
         return;
     }
 
-
     item.quantity += 1;
 
     updateCartCount();
+
     renderCart();
 
 }
@@ -571,28 +584,27 @@ function decreaseQuantity(productId) {
     var item =
         cart.find(function (item) {
 
-            return Number(item.id) === Number(productId);
+            return Number(item.id) ===
+                Number(productId);
 
         });
-
 
     if (!item) {
         return;
     }
 
-
     item.quantity -= 1;
-
 
     if (item.quantity <= 0) {
 
         removeFromCart(productId);
+
         return;
 
     }
 
-
     updateCartCount();
+
     renderCart();
 
 }
@@ -607,19 +619,17 @@ function updateCartCount() {
     var cartCount =
         document.getElementById("cartCount");
 
-
     if (!cartCount) {
         return;
     }
 
-
     var count =
         cart.reduce(function (total, item) {
 
-            return total + Number(item.quantity);
+            return total +
+                Number(item.quantity);
 
         }, 0);
-
 
     cartCount.textContent = count;
 
@@ -652,11 +662,9 @@ function openCart() {
     var overlay =
         document.getElementById("cartOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     renderCart();
 
@@ -674,11 +682,9 @@ function closeCart() {
     var overlay =
         document.getElementById("cartOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     overlay.classList.remove("active");
 
@@ -712,11 +718,9 @@ function renderCart() {
     var cartTotal =
         document.getElementById("cartTotal");
 
-
     if (!cartItems) {
         return;
     }
-
 
     if (cart.length === 0) {
 
@@ -727,21 +731,17 @@ function renderCart() {
             '<p>Add some products to continue.</p>' +
             "</div>";
 
-
         if (cartTotal) {
 
             cartTotal.textContent = "0.00";
 
         }
 
-
         return;
 
     }
 
-
     var html = "";
-
 
     cart.forEach(function (item) {
 
@@ -749,9 +749,7 @@ function renderCart() {
             Number(item.price) *
             Number(item.quantity);
 
-
         var imageHTML = "";
-
 
         if (item.image) {
 
@@ -768,9 +766,7 @@ function renderCart() {
 
         }
 
-
         var sizeHTML = "";
-
 
         if (item.size) {
 
@@ -781,9 +777,7 @@ function renderCart() {
 
         }
 
-
         html +=
-
             '<div class="cart-item">' +
 
             '<div class="cart-item-image">' +
@@ -841,9 +835,7 @@ function renderCart() {
 
     });
 
-
     cartItems.innerHTML = html;
-
 
     if (cartTotal) {
 
@@ -864,18 +856,18 @@ function openCheckout() {
     if (cart.length === 0) {
 
         alert("Your cart is empty.");
+
         return;
 
     }
-
 
     if (!shopOpen) {
 
         alert("Shop is currently closed.");
+
         return;
 
     }
-
 
     var overlay =
         document.getElementById("checkoutOverlay");
@@ -883,11 +875,9 @@ function openCheckout() {
     var checkoutTotal =
         document.getElementById("checkoutTotal");
 
-
     if (!overlay) {
         return;
     }
-
 
     if (checkoutTotal) {
 
@@ -895,7 +885,6 @@ function openCheckout() {
             calculateCartTotal().toFixed(2);
 
     }
-
 
     overlay.classList.add("active");
 
@@ -911,11 +900,9 @@ function closeCheckout() {
     var overlay =
         document.getElementById("checkoutOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     overlay.classList.remove("active");
 
@@ -949,22 +936,21 @@ async function placeOrder(event) {
 
     }
 
-
     if (cart.length === 0) {
 
         alert("Your cart is empty.");
+
         return;
 
     }
-
 
     if (!shopOpen) {
 
         alert("Shop is currently closed.");
+
         return;
 
     }
-
 
     var nameElement =
         document.getElementById("customerName");
@@ -978,59 +964,71 @@ async function placeOrder(event) {
     var paymentElement =
         document.getElementById("paymentMethod");
 
-
     var customerName =
-        nameElement ? nameElement.value.trim() : "";
+        nameElement
+            ? nameElement.value.trim()
+            : "";
 
     var customerPhone =
-        phoneElement ? phoneElement.value.trim() : "";
+        phoneElement
+            ? phoneElement.value.trim()
+            : "";
 
     var customerAddress =
-        addressElement ? addressElement.value.trim() : "";
+        addressElement
+            ? addressElement.value.trim()
+            : "";
 
     var paymentMethod =
-        paymentElement ? paymentElement.value : "";
-
+        paymentElement
+            ? paymentElement.value
+            : "";
 
     if (!customerName) {
 
         alert("Please enter your name.");
+
         return;
 
     }
-
 
     if (!customerPhone) {
 
         alert("Please enter your phone number.");
+
         return;
 
     }
-
 
     if (!/^[0-9]{10}$/.test(customerPhone)) {
 
-        alert("Please enter a valid 10-digit phone number.");
+        alert(
+            "Please enter a valid 10-digit phone number."
+        );
+
         return;
 
     }
-
 
     if (!customerAddress) {
 
-        alert("Please enter your delivery address.");
+        alert(
+            "Please enter your delivery address."
+        );
+
         return;
 
     }
-
 
     if (!paymentMethod) {
 
-        alert("Please select a payment method.");
+        alert(
+            "Please select a payment method."
+        );
+
         return;
 
     }
-
 
     var orderItems =
         cart.map(function (item) {
@@ -1051,10 +1049,8 @@ async function placeOrder(event) {
 
         });
 
-
     var totalAmount =
         calculateCartTotal();
-
 
     var orderData = {
 
@@ -1072,42 +1068,39 @@ async function placeOrder(event) {
 
     };
 
-
     try {
 
         var response =
-            await fetch(ORDERS_API_URL, {
+            await fetch(
+                ORDERS_API_URL,
+                {
+                    method: "POST",
 
-                method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify(orderData)
-
-            });
-
+                    body: JSON.stringify(orderData)
+                }
+            );
 
         if (!response.ok) {
 
-            throw new Error("Failed to place order");
+            throw new Error(
+                "Failed to place order"
+            );
 
         }
 
-
         var data =
             await response.json();
-
 
         lastOrderId =
             data.order_id ||
             data.id ||
             data.orderId;
 
-
         cart = [];
-
 
         updateCartCount();
 
@@ -1115,20 +1108,19 @@ async function placeOrder(event) {
 
         closeCart();
 
-
         var successOverlay =
             document.getElementById("successOverlay");
 
         var successOrderId =
             document.getElementById("successOrderId");
 
-
         if (successOrderId) {
 
             if (lastOrderId) {
 
                 successOrderId.textContent =
-                    "Order ID: " + lastOrderId;
+                    "Order ID: " +
+                    lastOrderId;
 
             } else {
 
@@ -1139,25 +1131,31 @@ async function placeOrder(event) {
 
         }
 
-
         if (successOverlay) {
 
             successOverlay.classList.add("active");
 
         } else {
 
-            alert(
-                lastOrderId
-                    ? "Order placed successfully! Order ID: " + lastOrderId
-                    : "Order placed successfully!"
-            );
+            if (lastOrderId) {
+
+                alert(
+                    "Order placed successfully! Order ID: " +
+                    lastOrderId
+                );
+
+            } else {
+
+                alert(
+                    "Order placed successfully!"
+                );
+
+            }
 
         }
 
-
         var form =
             document.getElementById("checkoutForm");
-
 
         if (form) {
 
@@ -1165,10 +1163,12 @@ async function placeOrder(event) {
 
         }
 
-
     } catch (error) {
 
-        console.error("Order error:", error);
+        console.error(
+            "Order error:",
+            error
+        );
 
         alert(
             "Unable to place order right now. Please try again."
@@ -1188,11 +1188,9 @@ function closeSuccess() {
     var overlay =
         document.getElementById("successOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     overlay.classList.remove("active");
 
@@ -1207,25 +1205,22 @@ function trackSuccessfulOrder() {
 
     closeSuccess();
 
-
     if (!lastOrderId) {
 
         openTrackOrder();
+
         return;
 
     }
 
-
     var input =
         document.getElementById("trackOrderId");
-
 
     if (input) {
 
         input.value = lastOrderId;
 
     }
-
 
     openTrackOrder();
 
@@ -1243,11 +1238,9 @@ function openTrackOrder() {
     var overlay =
         document.getElementById("trackOrderOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     overlay.classList.add("active");
 
@@ -1263,11 +1256,9 @@ function closeTrackOrder() {
     var overlay =
         document.getElementById("trackOrderOverlay");
 
-
     if (!overlay) {
         return;
     }
-
 
     overlay.classList.remove("active");
 
@@ -1301,27 +1292,25 @@ async function trackOrder() {
     var result =
         document.getElementById("trackingResult");
 
-
     if (!input || !result) {
         return;
     }
 
-
     var orderId =
         input.value.trim();
 
-
     if (!orderId) {
 
-        alert("Please enter your order ID.");
+        alert(
+            "Please enter your order ID."
+        );
+
         return;
 
     }
 
-
     result.innerHTML =
         '<div class="loading">Loading order...</div>';
-
 
     try {
 
@@ -1332,25 +1321,25 @@ async function trackOrder() {
                 encodeURIComponent(orderId)
             );
 
-
         if (!response.ok) {
 
-            throw new Error("Order not found");
+            throw new Error(
+                "Order not found"
+            );
 
         }
-
 
         var order =
             await response.json();
 
-
         renderOrderTracking(order);
-
 
     } catch (error) {
 
-        console.error("Tracking error:", error);
-
+        console.error(
+            "Tracking error:",
+            error
+        );
 
         result.innerHTML =
             '<div class="empty-message">' +
@@ -1372,11 +1361,9 @@ function renderOrderTracking(order) {
     var result =
         document.getElementById("trackingResult");
 
-
     if (!result) {
         return;
     }
-
 
     var status =
         String(
@@ -1384,7 +1371,6 @@ function renderOrderTracking(order) {
             order.order_status ||
             "pending"
         ).toLowerCase();
-
 
     var statusLabels = {
 
@@ -1402,17 +1388,14 @@ function renderOrderTracking(order) {
 
     };
 
-
     var statusText =
         statusLabels[status] ||
         status.replace(/_/g, " ");
 
-
     var html = "";
 
-
-    html += '<div class="tracking-card">';
-
+    html +=
+        '<div class="tracking-card">';
 
     html +=
         "<h3>Order #" +
@@ -1425,7 +1408,6 @@ function renderOrderTracking(order) {
         ) +
         "</h3>";
 
-
     html +=
         '<div class="tracking-status">' +
         "<strong>" +
@@ -1433,59 +1415,62 @@ function renderOrderTracking(order) {
         "</strong>" +
         "</div>";
 
-
     if (order.customer_name) {
 
         html +=
             "<p><strong>Name:</strong> " +
-            escapeHTML(order.customer_name) +
+            escapeHTML(
+                order.customer_name
+            ) +
             "</p>";
 
     }
-
 
     if (order.customer_phone) {
 
         html +=
             "<p><strong>Phone:</strong> " +
-            escapeHTML(order.customer_phone) +
+            escapeHTML(
+                order.customer_phone
+            ) +
             "</p>";
 
     }
-
 
     if (order.customer_address) {
 
         html +=
             "<p><strong>Address:</strong> " +
-            escapeHTML(order.customer_address) +
+            escapeHTML(
+                order.customer_address
+            ) +
             "</p>";
 
     }
-
 
     if (order.payment_method) {
 
         html +=
             "<p><strong>Payment:</strong> " +
-            escapeHTML(order.payment_method) +
+            escapeHTML(
+                order.payment_method
+            ) +
             "</p>";
 
     }
-
 
     if (order.total_amount !== undefined) {
 
         html +=
             "<p><strong>Total:</strong> ₹" +
-            Number(order.total_amount).toFixed(2) +
+            Number(
+                order.total_amount
+            ).toFixed(2) +
             "</p>";
 
     }
 
-
     html += "</div>";
-
 
     result.innerHTML = html;
 
@@ -1501,26 +1486,49 @@ async function loadShopStatus() {
     try {
 
         var response =
-            await fetch(SHOP_STATUS_API_URL);
-
+            await fetch(
+                SHOP_STATUS_API_URL +
+                "?time=" +
+                Date.now(),
+                {
+                    method: "GET",
+                    cache: "no-store"
+                }
+            );
 
         if (!response.ok) {
 
-            throw new Error("Failed to load shop status");
+            throw new Error(
+                "Failed to load shop status"
+            );
 
         }
-
 
         var data =
             await response.json();
 
+        console.log(
+            "Shop status from server:",
+            data
+        );
+
+        var statusValue =
+            data.shop_open;
+
+        if (statusValue === undefined) {
+
+            statusValue =
+                data.shopOpen;
+
+        }
 
         shopOpen =
-            data.shop_open === true;
-
+            statusValue === true ||
+            statusValue === 1 ||
+            statusValue === "1" ||
+            statusValue === "true";
 
         updateShopStatusUI();
-
 
     } catch (error) {
 
@@ -1529,7 +1537,10 @@ async function loadShopStatus() {
             error
         );
 
-
+        /*
+         * If the server is temporarily waking up,
+         * keep the site usable.
+         */
         shopOpen = true;
 
         updateShopStatusUI();
@@ -1540,7 +1551,7 @@ async function loadShopStatus() {
 
 
 // =====================================================
-// UPDATE SHOP STATUS
+// UPDATE SHOP STATUS UI
 // =====================================================
 
 function updateShopStatusUI() {
@@ -1550,25 +1561,35 @@ function updateShopStatusUI() {
             ".shop-status, #shopStatus"
         );
 
-
     statusElements.forEach(function (element) {
 
-        element.textContent =
-            shopOpen
-                ? "Mini Mart Open"
-                : "Mini Mart Closed";
+        if (shopOpen) {
 
+            element.textContent =
+                "🟢 Shop Open";
 
-        element.classList.toggle(
-            "open",
-            shopOpen
-        );
+            element.classList.remove(
+                "closed"
+            );
 
+            element.classList.add(
+                "open"
+            );
 
-        element.classList.toggle(
-            "closed",
-            !shopOpen
-        );
+        } else {
+
+            element.textContent =
+                "🔴 Shop Closed";
+
+            element.classList.remove(
+                "open"
+            );
+
+            element.classList.add(
+                "closed"
+            );
+
+        }
 
     });
 
@@ -1583,14 +1604,29 @@ function escapeHTML(value) {
 
     return String(value)
 
-        .replace(/&/g, "&amp;")
+        .replace(
+            /&/g,
+            "&amp;"
+        )
 
-        .replace(/</g, "&lt;")
+        .replace(
+            /</g,
+            "&lt;"
+        )
 
-        .replace(/>/g, "&gt;")
+        .replace(
+            />/g,
+            "&gt;"
+        )
 
-        .replace(/"/g, "&quot;")
+        .replace(
+            /"/g,
+            "&quot;"
+        )
 
-        .replace(/'/g, "&#039;");
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
