@@ -934,9 +934,7 @@ app.put(
 
         try {
 
-            let shopOpen =
-                req.body.shopOpen;
-
+            let shopOpen = req.body.shopOpen;
 
             if (
                 shopOpen === undefined &&
@@ -945,22 +943,20 @@ app.put(
                 shopOpen = req.body.open;
             }
 
-
-            if (
-                typeof shopOpen === "string"
-            ) {
+            if (typeof shopOpen === "string") {
 
                 shopOpen =
-                    shopOpen.toLowerCase() === "true";
+                    shopOpen.trim().toLowerCase() === "true" ||
+                    shopOpen.trim() === "1";
+
+            } else {
+
+                shopOpen = shopOpen === true || shopOpen === 1;
 
             }
 
 
-            shopOpen =
-                Boolean(shopOpen);
-
-
-            db.prepare(`
+            const result = db.prepare(`
                 UPDATE settings
                 SET shop_open = ?
                 WHERE id = 1
@@ -969,13 +965,45 @@ app.put(
             );
 
 
+            if (result.changes === 0) {
+
+                db.prepare(`
+                    INSERT INTO settings
+                    (id, shop_open)
+                    VALUES (1, ?)
+                    ON CONFLICT(id)
+                    DO UPDATE SET shop_open = excluded.shop_open
+                `).run(
+                    shopOpen ? 1 : 0
+                );
+
+            }
+
+
+            const savedSettings = db.prepare(`
+                SELECT shop_open
+                FROM settings
+                WHERE id = 1
+            `).get();
+
+
+            const savedStatus =
+                Boolean(savedSettings.shop_open);
+
+
+            console.log(
+                "SHOP STATUS SAVED:",
+                savedStatus
+            );
+
+
             res.json({
                 success: true,
-                message: shopOpen
+                message: savedStatus
                     ? "Shop opened successfully"
                     : "Shop closed successfully",
-                shopOpen: shopOpen,
-                open: shopOpen
+                shopOpen: savedStatus,
+                open: savedStatus
             });
 
         } catch (error) {
