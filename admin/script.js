@@ -2094,76 +2094,112 @@ function updateShopStatusUI(isOpen) {
 
 async function toggleShopStatus() {
 
-    var textElement =
-        document.getElementById(
-            "shopStatusText"
+    var button = document.getElementById("shopStatusButton");
+
+    if (button) {
+        button.disabled = true;
+    }
+
+    try {
+
+        var response = await fetch(
+            SHOP_STATUS_API,
+            {
+                method: "GET",
+                headers: authHeaders(),
+                cache: "no-store"
+            }
         );
 
-    var currentlyOpen =
-        textElement &&
-        textElement.textContent
-            .toLowerCase()
-            .includes("open");
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
 
-    var newStatus =
-        !currentlyOpen;
+        var currentData = await response.json();
 
-    var confirmed =
-        confirm(
+        if (!response.ok) {
+            throw new Error(
+                currentData.message ||
+                "Could not read shop status."
+            );
+        }
+
+        var currentStatus =
+            currentData.shopOpen === true ||
+            currentData.open === true;
+
+        var newStatus = !currentStatus;
+
+        var confirmed = confirm(
             newStatus
                 ? "Open the shop?"
                 : "Close the shop?"
         );
 
-    if (!confirmed) {
-        return;
-    }
+        if (!confirmed) {
+            return;
+        }
 
-    try {
 
-        var response =
-            await fetch(
-                SHOP_STATUS_API,
-                {
-                    method: "PUT",
-                    headers: authHeaders(),
-                    body: JSON.stringify({
-                        shopOpen: newStatus
-                    })
-                }
-            );
+        var updateResponse = await fetch(
+            SHOP_STATUS_API,
+            {
+                method: "PUT",
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    shopOpen: newStatus
+                })
+            }
+        );
 
-        var data =
-            await response.json();
 
-        if (response.status === 401) {
-
+        if (updateResponse.status === 401) {
             handleUnauthorized();
             return;
         }
 
-        if (!response.ok || !data.success) {
+
+        var updateData =
+            await updateResponse.json();
+
+
+        if (
+            !updateResponse.ok ||
+            updateData.success !== true
+        ) {
 
             throw new Error(
-                data.message ||
+                updateData.message ||
                 "Failed to update shop status."
             );
+
         }
 
-        updateShopStatusUI(
-            data.shopOpen === true ||
-            data.open === true
-        );
+
+        var savedStatus =
+            updateData.shopOpen === true ||
+            updateData.open === true;
+
+
+        updateShopStatusUI(savedStatus);
+
 
         alert(
-            data.message ||
-            "Shop status updated."
+            savedStatus
+                ? "Shop is now OPEN."
+                : "Shop is now CLOSED."
         );
+
+
+        /* Refresh status from backend */
+        await loadShopStatus();
+
 
     } catch (error) {
 
         console.error(
-            "Toggle shop status error:",
+            "Shop status error:",
             error
         );
 
@@ -2171,7 +2207,15 @@ async function toggleShopStatus() {
             error.message ||
             "Failed to update shop status."
         );
+
+    } finally {
+
+        if (button) {
+            button.disabled = false;
+        }
+
     }
+
 }
 
 
