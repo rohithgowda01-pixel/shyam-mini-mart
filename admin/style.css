@@ -1,5 +1,3 @@
-/* ================= GENERAL ================= */
-
 * {
     margin: 0;
     padding: 0;
@@ -8,9 +6,7 @@
 
 body {
     font-family: Arial, Helvetica, sans-serif;
-
     background: #f6f7f9;
-
     color: #222;
 }
 
@@ -25,7 +21,134 @@ button {
 }
 
 
-/* ================= SIDEBAR ================= */
+/* LOGIN */
+
+.login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #111;
+
+    padding: 20px;
+
+    z-index: 10000;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 400px;
+
+    background: white;
+
+    border-radius: 18px;
+
+    padding: 35px;
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.login-logo {
+    width: 60px;
+    height: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f2f2f2;
+
+    border-radius: 15px;
+
+    font-size: 30px;
+
+    margin: 0 auto 18px;
+}
+
+.login-box h1 {
+    text-align: center;
+    font-size: 25px;
+}
+
+.login-subtitle {
+    text-align: center;
+    color: #777;
+    margin-top: 6px;
+    margin-bottom: 25px;
+}
+
+.login-box label {
+    display: block;
+
+    font-weight: 600;
+
+    font-size: 14px;
+
+    margin-bottom: 7px;
+    margin-top: 15px;
+}
+
+.login-box input {
+    width: 100%;
+
+    padding: 13px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 9px;
+
+    outline: none;
+
+    font-size: 14px;
+}
+
+.login-box input:focus {
+    border-color: #111;
+}
+
+.login-button {
+    width: 100%;
+
+    border: none;
+
+    background: #111;
+
+    color: white;
+
+    padding: 14px;
+
+    border-radius: 9px;
+
+    font-weight: 700;
+
+    margin-top: 20px;
+}
+
+.login-error {
+    color: #d22;
+
+    font-size: 13px;
+
+    margin-top: 12px;
+
+    min-height: 18px;
+}
+
+
+/* ADMIN PANEL */
+
+.admin-panel {
+    display: none;
+}
+
+
+/* SIDEBAR */
 
 .sidebar {
     position: fixed;
@@ -41,6 +164,8 @@ button {
     color: white;
 
     padding: 25px 18px;
+
+    z-index: 100;
 }
 
 .admin-logo {
@@ -67,7 +192,7 @@ button {
     margin-bottom: 12px;
 }
 
-nav {
+.sidebar nav {
     display: flex;
 
     flex-direction: column;
@@ -100,8 +225,34 @@ nav {
     color: white;
 }
 
+.logout-button {
+    position: absolute;
 
-/* ================= MAIN ================= */
+    left: 18px;
+    right: 18px;
+    bottom: 25px;
+
+    width: calc(100% - 36px);
+
+    border: 1px solid #333;
+
+    background: transparent;
+
+    color: #bbb;
+
+    padding: 12px;
+
+    border-radius: 9px;
+}
+
+.logout-button:hover {
+    background: #2a2a2a;
+
+    color: white;
+}
+
+
+/* MAIN */
 
 .main-content {
     margin-left: 240px;
@@ -110,7 +261,7 @@ nav {
 }
 
 
-/* ================= TOPBAR ================= */
+/* TOPBAR */
 
 .topbar {
     display: flex;
@@ -120,6 +271,8 @@ nav {
     align-items: center;
 
     margin-bottom: 25px;
+
+    gap: 20px;
 }
 
 .topbar h1 {
@@ -149,17 +302,20 @@ nav {
 }
 
 
-/* ================= STATS ================= */
+/* STATS */
 
 .stats {
     display: grid;
 
-    grid-template-columns:
-        repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr);
 
     gap: 18px;
 
     margin-bottom: 25px;
+}
+
+.order-stats {
+    grid-template-columns: repeat(4, 1fr);
 }
 
 .stat-card {
@@ -181,6 +337,8 @@ nav {
 .stat-icon {
     width: 48px;
     height: 48px;
+
+    flex-shrink: 0;
 
     background: #f2f2f2;
 
@@ -208,7 +366,7 @@ nav {
 }
 
 
-/* ================= PRODUCTS ================= */
+/* SECTION */
 
 .product-section {
     background: white;
@@ -238,9 +396,8 @@ nav {
     font-size: 20px;
 }
 
-.section-top input {
-    width: 280px;
-
+.section-top input,
+.section-top select {
     padding: 11px 13px;
 
     border: 1px solid #ddd;
@@ -248,10 +405,22 @@ nav {
     border-radius: 9px;
 
     outline: none;
+
+    background: white;
+}
+
+.section-top input {
+    width: 280px;
+}
+
+.order-filters {
+    display: flex;
+
+    gap: 10px;
 }
 
 
-/* ================= TABLE ================= */
+/* TABLE */
 
 .table-container {
     width: 100%;
@@ -304,6 +473,8 @@ td {
     border-radius: 8px;
 
     object-fit: cover;
+
+    background: #f1f1f1;
 }
 
 .product-cell strong {
@@ -347,7 +518,8 @@ td {
 }
 
 .edit-btn,
-.delete-btn {
+.delete-btn,
+.view-btn {
     border: none;
 
     padding: 7px 9px;
@@ -365,15 +537,130 @@ td {
     color: #c00;
 }
 
+.view-btn {
+    background: #111;
 
-/* ================= FORM ================= */
+    color: white;
+}
+
+
+/* STATUS */
+
+.order-status {
+    border: none;
+
+    padding: 7px 9px;
+
+    border-radius: 8px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    background: #f1f1f1;
+}
+
+
+/* HIDDEN */
+
+.hidden-section {
+    display: none;
+}
+
+
+/* DASHBOARD */
+
+.dashboard-grid {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 18px;
+
+    margin-bottom: 25px;
+}
+
+.dashboard-card {
+    background: white;
+
+    border: 1px solid #eee;
+
+    border-radius: 15px;
+
+    padding: 25px;
+}
+
+.dashboard-icon {
+    font-size: 25px;
+
+    margin-bottom: 18px;
+}
+
+.dashboard-card p {
+    color: #777;
+
+    font-size: 14px;
+
+    margin-bottom: 7px;
+}
+
+.dashboard-card h2 {
+    font-size: 28px;
+}
+
+.shop-status-card {
+    background: white;
+
+    border: 1px solid #eee;
+
+    border-radius: 15px;
+
+    padding: 25px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 20px;
+}
+
+.shop-status-card p {
+    color: #777;
+
+    font-size: 14px;
+
+    margin-bottom: 7px;
+}
+
+.shop-status-card h2 {
+    font-size: 22px;
+}
+
+.shop-toggle-button {
+    border: none;
+
+    background: #111;
+
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 9px;
+
+    font-weight: 700;
+}
+
+
+/* FORM */
 
 .form-overlay {
     position: fixed;
 
     inset: 0;
 
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
 
     display: none;
 
@@ -396,6 +683,10 @@ td {
     overflow-y: auto;
 
     border-radius: 16px;
+}
+
+.order-details-panel {
+    width: min(650px, 100%);
 }
 
 .form-header {
@@ -429,6 +720,8 @@ td {
     height: 35px;
 
     border-radius: 50%;
+
+    font-size: 20px;
 }
 
 #productForm {
@@ -494,7 +787,92 @@ td {
 }
 
 
-/* ================= MOBILE ================= */
+/* ORDER DETAILS */
+
+.order-details-content {
+    padding: 20px;
+}
+
+.order-detail-row {
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 12px 0;
+
+    border-bottom: 1px solid #eee;
+}
+
+.order-detail-row span:first-child {
+    color: #777;
+
+    font-size: 13px;
+}
+
+.order-detail-row span:last-child {
+    font-weight: 600;
+
+    text-align: right;
+}
+
+.order-items {
+    margin-top: 20px;
+}
+
+.order-items h3 {
+    margin-bottom: 12px;
+}
+
+.order-item {
+    display: flex;
+
+    justify-content: space-between;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid #eee;
+}
+
+.empty-message {
+    padding: 35px;
+
+    text-align: center;
+
+    color: #777;
+}
+
+.loading-message {
+    padding: 35px;
+
+    text-align: center;
+
+    color: #777;
+}
+
+.error-message {
+    padding: 35px;
+
+    text-align: center;
+
+    color: #c00;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 1000px) {
+
+    .order-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 @media (max-width: 800px) {
 
@@ -512,12 +890,20 @@ td {
         margin-bottom: 15px;
     }
 
-    nav {
+    .sidebar nav {
         flex-direction: row;
     }
 
     .nav-item {
         text-align: center;
+    }
+
+    .logout-button {
+        position: static;
+
+        width: 100%;
+
+        margin-top: 15px;
     }
 
     .main-content {
@@ -536,7 +922,8 @@ td {
         width: 100%;
     }
 
-    .stats {
+    .stats,
+    .order-stats {
         grid-template-columns: 1fr;
     }
 
@@ -548,5 +935,28 @@ td {
 
     .section-top input {
         width: 100%;
+    }
+
+    .order-filters {
+        flex-direction: column;
+    }
+
+    .order-filters input,
+    .order-filters select {
+        width: 100%;
+    }
+
+    .shop-status-card {
+        align-items: stretch;
+
+        flex-direction: column;
+    }
+
+    .shop-toggle-button {
+        width: 100%;
+    }
+
+    .login-box {
+        padding: 25px;
     }
 }
