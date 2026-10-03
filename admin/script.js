@@ -1,149 +1,480 @@
-// ============================================
-// ROHITH MINI MART - ADMIN PANEL JAVASCRIPT
-// ============================================
+// ============================================================
+// ROHITH MINI MART - FINAL ADMIN PANEL
+// ============================================================
 
-const API_URL = "http://localhost:3000/api/products";
-const ORDERS_API_URL = "http://localhost:3000/api/orders";
+const API_URL =
+    "https://shyam-mini-mart.onrender.com/api/products";
+
+const ORDERS_API_URL =
+    "https://shyam-mini-mart.onrender.com/api/orders";
+
+const SHOP_STATUS_API_URL =
+    "https://shyam-mini-mart.onrender.com/api/shop-status";
+
+const LOGIN_API_URL =
+    "https://shyam-mini-mart.onrender.com/api/admin/login";
+
+const ADMIN_TOKEN_KEY =
+    "rohithAdminToken";
+
 
 let products = [];
 let orders = [];
-
-
-// ============================================
-// SHOP STATUS
-// ============================================
-
 let shopOpen = true;
 
-async function loadShopStatus() {
 
-    try {
+// ============================================================
+// PAGE START
+// ============================================================
 
-        const response = await fetch(
-            "http://localhost:3000/api/shop-status"
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        // Always require login when Admin page is opened.
+        localStorage.removeItem(
+            ADMIN_TOKEN_KEY
         );
 
-        const data = await response.json();
+        localStorage.removeItem(
+            "rohithAdminLoggedIn"
+        );
 
-        shopOpen = data.shop_open;
+        showAdminLogin();
 
-        updateShopStatus();
+        setupLogin();
 
-    } catch (error) {
+        setupProductForm();
 
-        console.error("Failed to load shop status:", error);
-
-        updateShopStatus();
     }
+);
+
+
+// ============================================================
+// LOGIN SCREEN
+// ============================================================
+
+function showAdminLogin() {
+
+    const loginScreen =
+        document.getElementById(
+            "adminLoginScreen"
+        );
+
+    const adminPanel =
+        document.getElementById(
+            "adminPanel"
+        );
+
+    if (loginScreen) {
+
+        loginScreen.style.display =
+            "flex";
+
+    }
+
+    if (adminPanel) {
+
+        adminPanel.style.display =
+            "none";
+
+    }
+
 }
 
 
-async function toggleShopStatus() {
+// ============================================================
+// ADMIN PANEL
+// ============================================================
 
-    const newStatus = !shopOpen;
+function showAdminPanel() {
 
-    try {
+    const loginScreen =
+        document.getElementById(
+            "adminLoginScreen"
+        );
 
-        const response = await fetch(
-            "http://localhost:3000/api/shop-status",
-            {
-                method: "PUT",
+    const adminPanel =
+        document.getElementById(
+            "adminPanel"
+        );
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+    if (loginScreen) {
 
-                body: JSON.stringify({
-                    shop_open: newStatus
-                })
-            }
+        loginScreen.style.display =
+            "none";
+
+    }
+
+    if (adminPanel) {
+
+        adminPanel.style.display =
+            "flex";
+
+    }
+
+}
+
+
+// ============================================================
+// LOGIN SETUP
+// ============================================================
+
+function setupLogin() {
+
+    const loginForm =
+        document.getElementById(
+            "adminLoginForm"
+        );
+
+    if (!loginForm) {
+
+        console.error(
+            "Admin login form not found."
+        );
+
+        return;
+
+    }
+
+    loginForm.addEventListener(
+        "submit",
+        adminLogin
+    );
+
+}
+
+
+// ============================================================
+// ADMIN LOGIN
+// ============================================================
+
+async function adminLogin(event) {
+
+    event.preventDefault();
+
+    const usernameInput =
+        document.getElementById(
+            "adminUsername"
+        );
+
+    const passwordInput =
+        document.getElementById(
+            "adminPassword"
+        );
+
+    const loginButton =
+        document.getElementById(
+            "loginButton"
+        );
+
+    const loginError =
+        document.getElementById(
+            "loginError"
         );
 
 
-        const data = await response.json();
+    const username =
+        usernameInput
+            ? usernameInput.value.trim()
+            : "";
+
+    const password =
+        passwordInput
+            ? passwordInput.value
+            : "";
+
+
+    if (loginError) {
+
+        loginError.textContent =
+            "";
+
+    }
+
+
+    if (!username || !password) {
+
+        if (loginError) {
+
+            loginError.textContent =
+                "Please enter username and password.";
+
+        }
+
+        return;
+
+    }
+
+
+    if (loginButton) {
+
+        loginButton.disabled =
+            true;
+
+        loginButton.textContent =
+            "Logging in...";
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                LOGIN_API_URL,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            username:
+                                username,
+
+                            password:
+                                password
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
-                data.message || "Failed to update shop status"
+                data.message ||
+                "Invalid username or password."
             );
 
         }
 
 
-        shopOpen = data.shop_open;
+        if (!data.token) {
 
-        updateShopStatus();
+            throw new Error(
+                "Login token was not received."
+            );
+
+        }
+
+
+        localStorage.setItem(
+            ADMIN_TOKEN_KEY,
+            data.token
+        );
+
+
+        localStorage.setItem(
+            "rohithAdminLoggedIn",
+            "true"
+        );
+
+
+        showAdminPanel();
+
+
+        await loadProducts();
+
+        await loadOrders();
+
+        await loadShopStatus();
+
+
+        showAdminSection(
+            "products",
+            document.querySelector(
+                ".nav-item"
+            )
+        );
 
 
     } catch (error) {
 
         console.error(
-            "Failed to update shop status:",
+            "Admin login error:",
             error
         );
 
-        alert(
-            "Unable to update shop status."
+
+        if (loginError) {
+
+            loginError.textContent =
+                error.message ||
+                "Login failed.";
+
+        }
+
+    } finally {
+
+        if (loginButton) {
+
+            loginButton.disabled =
+                false;
+
+            loginButton.textContent =
+                "Login";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// LOGOUT
+// ============================================================
+
+function adminLogout() {
+
+    localStorage.removeItem(
+        ADMIN_TOKEN_KEY
+    );
+
+    localStorage.removeItem(
+        "rohithAdminLoggedIn"
+    );
+
+    products = [];
+
+    orders = [];
+
+    showAdminLogin();
+
+
+    const username =
+        document.getElementById(
+            "adminUsername"
+        );
+
+    const password =
+        document.getElementById(
+            "adminPassword"
+        );
+
+    const loginError =
+        document.getElementById(
+            "loginError"
+        );
+
+
+    if (username) {
+
+        username.value =
+            "";
+
+    }
+
+    if (password) {
+
+        password.value =
+            "";
+
+    }
+
+    if (loginError) {
+
+        loginError.textContent =
+            "";
+
+    }
+
+}
+
+
+// ============================================================
+// ADMIN FETCH
+// ============================================================
+
+async function adminFetch(
+    url,
+    options
+) {
+
+    const token =
+        localStorage.getItem(
+            ADMIN_TOKEN_KEY
+        );
+
+
+    if (!token) {
+
+        showAdminLogin();
+
+        throw new Error(
+            "Admin login required."
         );
 
     }
 
-}
+
+    const requestOptions =
+        options || {};
 
 
-function updateShopStatus() {
+    const headers = {
+        ...(requestOptions.headers || {}),
 
-    const statusText =
-        document.getElementById("shopStatusText");
-
-    const statusButton =
-        document.getElementById("shopStatusButton");
-
-    const statusIcon =
-        document.getElementById("shopStatusIcon");
+        Authorization:
+            "Bearer " + token
+    };
 
 
-    if (!statusText || !statusButton) {
-        return;
+    const response =
+        await fetch(
+            url,
+            {
+                ...requestOptions,
+                headers: headers
+            }
+        );
+
+
+    if (
+        response.status ===
+        401
+    ) {
+
+        localStorage.removeItem(
+            ADMIN_TOKEN_KEY
+        );
+
+        localStorage.removeItem(
+            "rohithAdminLoggedIn"
+        );
+
+
+        showAdminLogin();
+
+
+        throw new Error(
+            "Login expired. Please login again."
+        );
+
     }
 
 
-    if (shopOpen) {
-
-        statusText.textContent = "Open";
-
-        statusButton.textContent = "Close Shop";
-
-        statusButton.style.background = "#16803c";
-
-        if (statusIcon) {
-            statusIcon.textContent = "🟢";
-        }
-
-    } else {
-
-        statusText.textContent = "Closed";
-
-        statusButton.textContent = "Open Shop";
-
-        statusButton.style.background = "#d33";
-
-        if (statusIcon) {
-            statusIcon.textContent = "🔴";
-        }
-
-    }
+    return response;
 
 }
 
 
-// ============================================
+// ============================================================
 // SECTION NAVIGATION
-// ============================================
+// ============================================================
 
-function showAdminSection(section, button) {
+function showAdminSection(
+    section,
+    button
+) {
 
     const sections = [
         "productsSection",
@@ -152,16 +483,24 @@ function showAdminSection(section, button) {
     ];
 
 
-    sections.forEach(id => {
+    sections.forEach(
+        function (id) {
 
-        const element =
-            document.getElementById(id);
+            const element =
+                document.getElementById(
+                    id
+                );
 
-        if (element) {
-            element.style.display = "none";
+
+            if (element) {
+
+                element.style.display =
+                    "none";
+
+            }
+
         }
-
-    });
+    );
 
 
     const selectedSection =
@@ -171,35 +510,56 @@ function showAdminSection(section, button) {
 
 
     if (selectedSection) {
-        selectedSection.style.display = "block";
+
+        selectedSection.style.display =
+            "block";
+
     }
 
 
     document
-        .querySelectorAll(".nav-item")
-        .forEach(item => {
-            item.classList.remove("active");
-        });
+        .querySelectorAll(
+            ".nav-item"
+        )
+        .forEach(
+            function (item) {
+
+                item.classList.remove(
+                    "active"
+                );
+
+            }
+        );
 
 
     if (button) {
-        button.classList.add("active");
+
+        button.classList.add(
+            "active"
+        );
+
     }
 
 
     if (section === "products") {
+
         loadProducts();
+
     }
 
 
     if (section === "orders") {
+
         loadOrders();
+
     }
 
 
     if (section === "dashboard") {
 
         updateDashboard();
+
+        loadOrders();
 
         loadShopStatus();
 
@@ -208,30 +568,44 @@ function showAdminSection(section, button) {
 }
 
 
-// ============================================
-// PRODUCTS
-// ============================================
+// ============================================================
+// LOAD PRODUCTS
+// ============================================================
 
 async function loadProducts() {
 
     try {
 
         const response =
-            await fetch(API_URL);
+            await adminFetch(
+                API_URL
+            );
+
+
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
+
             throw new Error(
-                "Failed to load products"
+                data.message ||
+                "Failed to load products."
             );
+
         }
 
 
         products =
-            await response.json();
+            Array.isArray(data)
+                ? data
+                : [];
 
 
-        displayProducts(products);
+        displayProducts(
+            products
+        );
+
 
         updateProductStats();
 
@@ -240,7 +614,10 @@ async function loadProducts() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Load products error:",
+            error
+        );
 
 
         const list =
@@ -251,16 +628,17 @@ async function loadProducts() {
 
         if (list) {
 
-            list.innerHTML = `
+            list.innerHTML =
+                `
                 <tr>
                     <td
                         colspan="6"
                         style="text-align:center;"
                     >
-                        ❌ Unable to connect to backend
+                        Unable to load products.
                     </td>
                 </tr>
-            `;
+                `;
 
         }
 
@@ -269,9 +647,9 @@ async function loadProducts() {
 }
 
 
-// ============================================
+// ============================================================
 // DISPLAY PRODUCTS
-// ============================================
+// ============================================================
 
 function displayProducts(list) {
 
@@ -281,21 +659,29 @@ function displayProducts(list) {
         );
 
 
-    if (!tbody) return;
+    if (!tbody) {
+
+        return;
+
+    }
 
 
-    if (list.length === 0) {
+    if (
+        !Array.isArray(list) ||
+        list.length === 0
+    ) {
 
-        tbody.innerHTML = `
+        tbody.innerHTML =
+            `
             <tr>
                 <td
                     colspan="6"
                     style="text-align:center;"
                 >
-                    No products found
+                    No products found.
                 </td>
             </tr>
-        `;
+            `;
 
         return;
 
@@ -303,116 +689,144 @@ function displayProducts(list) {
 
 
     tbody.innerHTML =
-        list.map(product => {
+        list
+            .map(
+                function (product) {
 
-            const stockAvailable =
-                product.stock === "available";
-
-
-            return `
-
-                <tr>
-
-                    <td>
-
-                        <div class="admin-product">
-
-                            <img
-                                src="${escapeHTML(product.image || "")}"
-                                alt="${escapeHTML(product.name)}"
-                                onerror="this.style.display='none'"
-                            >
-
-                            <div>
-
-                                <strong>
-                                    ${escapeHTML(product.name)}
-                                </strong>
-
-                                <small>
-                                    ${escapeHTML(
-                                        product.size || ""
-                                    )}
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </td>
+                    const available =
+                        String(
+                            product.stock ||
+                            "available"
+                        ).toLowerCase() ===
+                        "available";
 
 
-                    <td>
-                        ${formatCategory(
-                            product.category
-                        )}
-                    </td>
+                    const image =
+                        product.image ||
+                        "";
 
 
-                    <td>
-                        ${escapeHTML(
-                            product.size || "-"
-                        )}
-                    </td>
+                    return `
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-product">
+
+                                    ${
+                                        image
+                                            ? `
+                                            <img
+                                                src="${escapeHTML(image)}"
+                                                alt="${escapeHTML(product.name)}"
+                                                onerror="this.style.display='none'"
+                                            >
+                                            `
+                                            : ""
+                                    }
+
+                                    <div>
+
+                                        <strong>
+                                            ${escapeHTML(
+                                                product.name
+                                            )}
+                                        </strong>
+
+                                        <small>
+                                            ${escapeHTML(
+                                                product.size ||
+                                                ""
+                                            )}
+                                        </small>
+
+                                    </div>
+
+                                </div>
+
+                            </td>
 
 
-                    <td>
-                        ₹${Number(
-                            product.price
-                        ).toFixed(2)}
-                    </td>
+                            <td>
+                                ${escapeHTML(
+                                    formatCategory(
+                                        product.category
+                                    )
+                                )}
+                            </td>
 
 
-                    <td>
-
-                        <span class="stock-badge ${
-                            stockAvailable
-                                ? "available"
-                                : "out"
-                        }">
-
-                            ${
-                                stockAvailable
-                                    ? "Available"
-                                    : "Out of Stock"
-                            }
-
-                        </span>
-
-                    </td>
+                            <td>
+                                ${escapeHTML(
+                                    product.size ||
+                                    "-"
+                                )}
+                            </td>
 
 
-                    <td>
-
-                        <button
-                            class="edit-btn"
-                            onclick="editProduct(${product.id})"
-                        >
-                            ✏️ Edit
-                        </button>
+                            <td>
+                                ₹${Number(
+                                    product.price ||
+                                    0
+                                ).toFixed(2)}
+                            </td>
 
 
-                        <button
-                            class="delete-btn"
-                            onclick="deleteProduct(${product.id})"
-                        >
-                            🗑️ Delete
-                        </button>
+                            <td>
 
-                    </td>
+                                <span
+                                    class="stock-badge ${
+                                        available
+                                            ? "available"
+                                            : "out"
+                                    }"
+                                >
+                                    ${
+                                        available
+                                            ? "Available"
+                                            : "Out of Stock"
+                                    }
+                                </span>
 
-                </tr>
+                            </td>
 
-            `;
 
-        }).join("");
+                            <td>
+
+                                <button
+                                    class="edit-btn"
+                                    onclick="editProduct(${Number(
+                                        product.id
+                                    )})"
+                                >
+                                    ✏️ Edit
+                                </button>
+
+
+                                <button
+                                    class="delete-btn"
+                                    onclick="deleteProduct(${Number(
+                                        product.id
+                                    )})"
+                                >
+                                    🗑️ Delete
+                                </button>
+
+                            </td>
+
+                        </tr>
+                    `;
+
+                }
+            )
+            .join("");
 
 }
 
 
-// ============================================
-// PRODUCT SEARCH
-// ============================================
+// ============================================================
+// SEARCH PRODUCTS
+// ============================================================
 
 function searchAdminProducts() {
 
@@ -422,7 +836,11 @@ function searchAdminProducts() {
         );
 
 
-    if (!input) return;
+    if (!input) {
+
+        return;
+
+    }
 
 
     const search =
@@ -432,35 +850,52 @@ function searchAdminProducts() {
 
 
     const filtered =
-        products.filter(product =>
+        products.filter(
+            function (product) {
 
-            (product.name || "")
-                .toLowerCase()
-                .includes(search)
+                return (
 
-            ||
+                    String(
+                        product.name ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
 
-            (product.category || "")
-                .toLowerCase()
-                .includes(search)
+                    ||
 
-            ||
+                    String(
+                        product.category ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
 
-            (product.size || "")
-                .toLowerCase()
-                .includes(search)
+                    ||
 
+                    String(
+                        product.size ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .includes(search)
+
+                );
+
+            }
         );
 
 
-    displayProducts(filtered);
+    displayProducts(
+        filtered
+    );
 
 }
 
 
-// ============================================
+// ============================================================
 // PRODUCT STATS
-// ============================================
+// ============================================================
 
 function updateProductStats() {
 
@@ -470,57 +905,53 @@ function updateProductStats() {
 
     const available =
         products.filter(
-            product =>
-                product.stock === "available"
+            function (product) {
+
+                return String(
+                    product.stock ||
+                    "available"
+                ).toLowerCase() ===
+                "available";
+
+            }
         ).length;
 
 
-    const out =
+    const outOfStock =
         products.filter(
-            product =>
-                product.stock === "out"
+            function (product) {
+
+                return String(
+                    product.stock ||
+                    ""
+                ).toLowerCase() !==
+                "available";
+
+            }
         ).length;
 
 
-    const totalElement =
-        document.getElementById(
-            "totalProducts"
-        );
+    setText(
+        "totalProducts",
+        total
+    );
 
+    setText(
+        "availableProducts",
+        available
+    );
 
-    const availableElement =
-        document.getElementById(
-            "availableProducts"
-        );
-
-
-    const outElement =
-        document.getElementById(
-            "outOfStockProducts"
-        );
-
-
-    if (totalElement) {
-        totalElement.textContent = total;
-    }
-
-
-    if (availableElement) {
-        availableElement.textContent =
-            available;
-    }
-
-
-    if (outElement) {
-        outElement.textContent = out;
-    }
+    setText(
+        "outOfStockProducts",
+        outOfStock
+    );
 
 }
 
 
-// ============================================
-// OPEN PRODUCT FORM
-// ============================================
+// ============================================================
+// OPEN ADD PRODUCT FORM
+// ============================================================
 
 function openProductForm() {
 
@@ -529,44 +960,58 @@ function openProductForm() {
             "productFormOverlay"
         );
 
-
     const form =
         document.getElementById(
             "productForm"
         );
-
 
     const title =
         document.getElementById(
             "formTitle"
         );
 
+    const productId =
+        document.getElementById(
+            "productId"
+        );
+
 
     if (form) {
+
         form.reset();
+
     }
 
 
-    document.getElementById(
-        "productId"
-    ).value = "";
+    if (productId) {
+
+        productId.value =
+            "";
+
+    }
 
 
     if (title) {
-        title.textContent = "Add Product";
+
+        title.textContent =
+            "Add Product";
+
     }
 
 
     if (overlay) {
-        overlay.style.display = "flex";
+
+        overlay.style.display =
+            "flex";
+
     }
 
 }
 
 
-// ============================================
+// ============================================================
 // CLOSE PRODUCT FORM
-// ============================================
+// ============================================================
 
 function closeProductForm() {
 
@@ -577,17 +1022,22 @@ function closeProductForm() {
 
 
     if (overlay) {
-        overlay.style.display = "none";
+
+        overlay.style.display =
+            "none";
+
     }
 
 }
 
 
-// ============================================
+// ============================================================
 // CLOSE FORM OUTSIDE
-// ============================================
+// ============================================================
 
-function closeFormOutside(event) {
+function closeFormOutside(
+    event
+) {
 
     if (
         event.target.id ===
@@ -601,77 +1051,78 @@ function closeFormOutside(event) {
 }
 
 
-// ============================================
+// ============================================================
 // EDIT PRODUCT
-// ============================================
+// ============================================================
 
 function editProduct(id) {
 
     const product =
         products.find(
-            item =>
-                Number(item.id) === Number(id)
+            function (item) {
+
+                return Number(
+                    item.id
+                ) ===
+                Number(id);
+
+            }
         );
 
 
     if (!product) {
 
-        alert("Product not found.");
+        alert(
+            "Product not found."
+        );
 
         return;
 
     }
 
 
-    document.getElementById(
-        "productId"
-    ).value = product.id;
+    setValue(
+        "productId",
+        product.id
+    );
 
+    setValue(
+        "productName",
+        product.name
+    );
 
-    document.getElementById(
-        "productName"
-    ).value = product.name || "";
+    setValue(
+        "productSize",
+        product.size
+    );
 
+    setValue(
+        "productPrice",
+        product.price
+    );
 
-    document.getElementById(
-        "productSize"
-    ).value = product.size || "";
+    setValue(
+        "productCategory",
+        product.category
+    );
 
+    setValue(
+        "productImage",
+        product.image
+    );
 
-    document.getElementById(
-        "productPrice"
-    ).value = product.price || "";
+    setValue(
+        "productStock",
+        product.stock ===
+            "out_of_stock"
+            ? "out_of_stock"
+            : "available"
+    );
 
-
-    document.getElementById(
-        "productCategory"
-    ).value =
-        product.category || "groceries";
-
-
-    document.getElementById(
-        "productImage"
-    ).value = product.image || "";
-
-
-    document.getElementById(
-        "productStock"
-    ).value =
-        product.stock || "available";
-
-
-    const description =
-        document.getElementById(
-            "productDescription"
-        );
-
-
-    if (description) {
-
-        description.value =
-            product.description || "";
-
-    }
+    setValue(
+        "productDescription",
+        product.description
+    );
 
 
     const title =
@@ -681,7 +1132,10 @@ function editProduct(id) {
 
 
     if (title) {
-        title.textContent = "Edit Product";
+
+        title.textContent =
+            "Edit Product";
+
     }
 
 
@@ -692,71 +1146,123 @@ function editProduct(id) {
 
 
     if (overlay) {
-        overlay.style.display = "flex";
+
+        overlay.style.display =
+            "flex";
+
     }
 
 }
 
 
-// ============================================
+// ============================================================
 // SAVE PRODUCT
-// ============================================
+// ============================================================
 
-async function saveProduct(event) {
+async function saveProduct(
+    event
+) {
 
     event.preventDefault();
 
 
     const id =
-        document.getElementById(
+        getValue(
             "productId"
-        ).value;
+        );
+
+
+    const name =
+        getValue(
+            "productName"
+        ).trim();
+
+
+    const size =
+        getValue(
+            "productSize"
+        ).trim();
+
+
+    const price =
+        Number(
+            getValue(
+                "productPrice"
+            )
+        );
+
+
+    const category =
+        getValue(
+            "productCategory"
+        );
+
+
+    const image =
+        getValue(
+            "productImage"
+        ).trim();
+
+
+    const stock =
+        getValue(
+            "productStock"
+        );
+
+
+    const description =
+        getValue(
+            "productDescription"
+        ).trim();
+
+
+    if (!name) {
+
+        alert(
+            "Please enter product name."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        Number.isNaN(price) ||
+        price < 0
+    ) {
+
+        alert(
+            "Please enter a valid price."
+        );
+
+        return;
+
+    }
 
 
     const productData = {
 
         name:
-            document
-                .getElementById("productName")
-                .value
-                .trim(),
+            name,
 
         size:
-            document
-                .getElementById("productSize")
-                .value
-                .trim(),
+            size,
 
         price:
-            Number(
-                document
-                    .getElementById("productPrice")
-                    .value
-            ),
+            price,
 
         category:
-            document.getElementById(
-                "productCategory"
-            ).value,
+            category,
 
         image:
-            document
-                .getElementById("productImage")
-                .value
-                .trim(),
+            image,
 
         stock:
-            document.getElementById(
-                "productStock"
-            ).value,
+            stock,
 
         description:
-            document
-                .getElementById(
-                    "productDescription"
-                )
-                ?.value
-                .trim() || ""
+            description
 
     };
 
@@ -769,8 +1275,10 @@ async function saveProduct(event) {
         if (id) {
 
             response =
-                await fetch(
-                    `${API_URL}/${id}`,
+                await adminFetch(
+                    API_URL +
+                    "/" +
+                    id,
                     {
                         method: "PUT",
 
@@ -789,7 +1297,7 @@ async function saveProduct(event) {
         } else {
 
             response =
-                await fetch(
+                await adminFetch(
                     API_URL,
                     {
                         method: "POST",
@@ -809,15 +1317,15 @@ async function saveProduct(event) {
         }
 
 
+        const data =
+            await response.json();
+
+
         if (!response.ok) {
 
-            const error =
-                await response.json();
-
-
             throw new Error(
-                error.message ||
-                "Failed to save product"
+                data.message ||
+                "Failed to save product."
             );
 
         }
@@ -832,15 +1340,21 @@ async function saveProduct(event) {
 
         closeProductForm();
 
+
         await loadProducts();
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Save product error:",
+            error
+        );
+
 
         alert(
-            "❌ " + error.message
+            "Unable to save product.\n\n" +
+            error.message
         );
 
     }
@@ -848,46 +1362,71 @@ async function saveProduct(event) {
 }
 
 
-// ============================================
+// ============================================================
 // DELETE PRODUCT
-// ============================================
+// ============================================================
 
-async function deleteProduct(id) {
+async function deleteProduct(
+    id
+) {
 
     const product =
         products.find(
-            item =>
-                Number(item.id) === Number(id)
+            function (item) {
+
+                return Number(
+                    item.id
+                ) ===
+                Number(id);
+
+            }
         );
 
 
-    if (!product) return;
+    if (!product) {
+
+        return;
+
+    }
 
 
     const confirmed =
         confirm(
-            `Delete "${product.name}"?`
+            "Delete \"" +
+            product.name +
+            "\"?"
         );
 
 
-    if (!confirmed) return;
+    if (!confirmed) {
+
+        return;
+
+    }
 
 
     try {
 
         const response =
-            await fetch(
-                `${API_URL}/${id}`,
+            await adminFetch(
+                API_URL +
+                "/" +
+                id,
                 {
                     method: "DELETE"
                 }
             );
 
 
+        const data =
+            await response.json();
+
+
         if (!response.ok) {
 
             throw new Error(
-                "Failed to delete product"
+                data.message ||
+                "Failed to delete product."
             );
 
         }
@@ -903,11 +1442,15 @@ async function deleteProduct(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Delete product error:",
+            error
+        );
 
 
         alert(
-            "❌ " + error.message
+            "Unable to delete product.\n\n" +
+            error.message
         );
 
     }
@@ -915,34 +1458,326 @@ async function deleteProduct(id) {
 }
 
 
-// ============================================
-// ORDERS
-// ============================================
+// ============================================================
+// PRODUCT FORM SETUP
+// ============================================================
+
+function setupProductForm() {
+
+    const form =
+        document.getElementById(
+            "productForm"
+        );
+
+
+    if (form) {
+
+        form.addEventListener(
+            "submit",
+            saveProduct
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// LOAD SHOP STATUS
+// ============================================================
+
+async function loadShopStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                SHOP_STATUS_API_URL
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Failed to load shop status."
+            );
+
+        }
+
+
+        // Backend returns shopOpen.
+        // Also support open and shop_open.
+        if (
+            data.shopOpen !==
+            undefined
+        ) {
+
+            shopOpen =
+                Boolean(
+                    data.shopOpen
+                );
+
+        } else if (
+            data.open !==
+            undefined
+        ) {
+
+            shopOpen =
+                Boolean(
+                    data.open
+                );
+
+        } else {
+
+            shopOpen =
+                Boolean(
+                    data.shop_open
+                );
+
+        }
+
+
+        updateShopStatus();
+
+
+    } catch (error) {
+
+        console.error(
+            "Load shop status error:",
+            error
+        );
+
+        updateShopStatus();
+
+    }
+
+}
+
+
+// ============================================================
+// TOGGLE SHOP STATUS
+// ============================================================
+
+async function toggleShopStatus() {
+
+    const newStatus =
+        !shopOpen;
+
+
+    try {
+
+        const response =
+            await adminFetch(
+                SHOP_STATUS_API_URL,
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            shopOpen:
+                                newStatus
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Failed to update shop status."
+            );
+
+        }
+
+
+        if (
+            data.shopOpen !==
+            undefined
+        ) {
+
+            shopOpen =
+                Boolean(
+                    data.shopOpen
+                );
+
+        } else if (
+            data.open !==
+            undefined
+        ) {
+
+            shopOpen =
+                Boolean(
+                    data.open
+                );
+
+        } else {
+
+            shopOpen =
+                newStatus;
+
+        }
+
+
+        updateShopStatus();
+
+
+        alert(
+            shopOpen
+                ? "Shop is now OPEN."
+                : "Shop is now CLOSED."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Shop status error:",
+            error
+        );
+
+
+        alert(
+            "Unable to update shop status.\n\n" +
+            error.message
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// UPDATE SHOP STATUS DISPLAY
+// ============================================================
+
+function updateShopStatus() {
+
+    const statusText =
+        document.getElementById(
+            "shopStatusText"
+        );
+
+    const statusButton =
+        document.getElementById(
+            "shopStatusButton"
+        );
+
+    const statusIcon =
+        document.getElementById(
+            "shopStatusIcon"
+        );
+
+
+    if (shopOpen) {
+
+        if (statusText) {
+
+            statusText.textContent =
+                "Shop Open";
+
+        }
+
+        if (statusButton) {
+
+            statusButton.textContent =
+                "Close Shop";
+
+            statusButton.style.background =
+                "#16803c";
+
+        }
+
+        if (statusIcon) {
+
+            statusIcon.textContent =
+                "🟢";
+
+        }
+
+    } else {
+
+        if (statusText) {
+
+            statusText.textContent =
+                "Shop Closed";
+
+        }
+
+        if (statusButton) {
+
+            statusButton.textContent =
+                "Open Shop";
+
+            statusButton.style.background =
+                "#d33";
+
+        }
+
+        if (statusIcon) {
+
+            statusIcon.textContent =
+                "🔴";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// LOAD ORDERS
+// ============================================================
 
 async function loadOrders() {
 
     try {
 
         const response =
-            await fetch(
+            await adminFetch(
                 ORDERS_API_URL
             );
+
+
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
-                "Failed to load orders"
+                data.message ||
+                "Failed to load orders."
             );
 
         }
 
 
         orders =
-            await response.json();
+            Array.isArray(data)
+                ? data
+                : [];
 
 
-        displayOrders(orders);
+        displayOrders(
+            orders
+        );
+
 
         updateOrderStats();
 
@@ -951,7 +1786,10 @@ async function loadOrders() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Load orders error:",
+            error
+        );
 
 
         const list =
@@ -962,22 +1800,17 @@ async function loadOrders() {
 
         if (list) {
 
-            list.innerHTML = `
-
+            list.innerHTML =
+                `
                 <tr>
-
                     <td
-                        colspan="8"
+                        colspan="6"
                         style="text-align:center;"
                     >
-
-                        ❌ Unable to load orders
-
+                        Unable to load orders.
                     </td>
-
                 </tr>
-
-            `;
+                `;
 
         }
 
@@ -986,9 +1819,9 @@ async function loadOrders() {
 }
 
 
-// ============================================
+// ============================================================
 // DISPLAY ORDERS
-// ============================================
+// ============================================================
 
 function displayOrders(list) {
 
@@ -998,27 +1831,29 @@ function displayOrders(list) {
         );
 
 
-    if (!tbody) return;
+    if (!tbody) {
+
+        return;
+
+    }
 
 
-    if (list.length === 0) {
+    if (
+        !Array.isArray(list) ||
+        list.length === 0
+    ) {
 
-        tbody.innerHTML = `
-
+        tbody.innerHTML =
+            `
             <tr>
-
                 <td
-                    colspan="8"
+                    colspan="6"
                     style="text-align:center;"
                 >
-
                     🛍️ No orders yet
-
                 </td>
-
             </tr>
-
-        `;
+            `;
 
         return;
 
@@ -1026,195 +1861,178 @@ function displayOrders(list) {
 
 
     tbody.innerHTML =
-        list.map(order => {
+        list
+            .map(
+                function (order) {
 
-            const date =
-                formatDate(
-                    order.created_at
-                );
+                    return `
+                        <tr>
 
-
-            return `
-
-                <tr>
-
-                    <td>
-
-                        <strong>
-                            #${order.id}
-                        </strong>
-
-                    </td>
+                            <td>
+                                <strong>
+                                    #${Number(
+                                        order.id
+                                    )}
+                                </strong>
+                            </td>
 
 
-                    <td>
+                            <td>
 
-                        <strong>
-                            ${escapeHTML(
-                                order.customer_name
-                            )}
-                        </strong>
+                                <strong>
+                                    ${escapeHTML(
+                                        order.customer_name ||
+                                        ""
+                                    )}
+                                </strong>
 
-                        <br>
+                                <br>
 
-                        <small>
-                            ${escapeHTML(
-                                order.address
-                            )}
-                        </small>
+                                <small>
+                                    ${escapeHTML(
+                                        order.address ||
+                                        ""
+                                    )}
+                                </small>
 
-                    </td>
-
-
-                    <td>
-                        ${escapeHTML(
-                            order.phone
-                        )}
-                    </td>
+                            </td>
 
 
-                    <td>
-
-                        <strong>
-                            ₹${Number(
-                                order.total
-                            ).toFixed(2)}
-                        </strong>
-
-                    </td>
+                            <td>
+                                ${escapeHTML(
+                                    order.phone ||
+                                    ""
+                                )}
+                            </td>
 
 
-                    <td>
-
-                        ${formatPaymentMethod(
-                            order.payment_method
-                        )}
-
-                    </td>
-
-
-                    <td>
-                        ${date}
-                    </td>
+                            <td>
+                                <strong>
+                                    ₹${Number(
+                                        order.total ||
+                                        0
+                                    ).toFixed(2)}
+                                </strong>
+                            </td>
 
 
-                    <td>
+                            <td>
 
-                        <select
-                            class="status-select"
-                            onchange="updateOrderStatus(
-                                ${order.id},
-                                this.value
-                            )"
-                        >
+                                <select
+                                    class="status-select"
+                                    onchange="updateOrderStatus(${Number(
+                                        order.id
+                                    )}, this.value)"
+                                >
 
-                            <option
-                                value="pending"
-                                ${
-                                    order.status ===
-                                    "pending"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Pending
-                            </option>
-
-
-                            <option
-                                value="confirmed"
-                                ${
-                                    order.status ===
-                                    "confirmed"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Confirmed
-                            </option>
+                                    <option
+                                        value="pending"
+                                        ${
+                                            order.status ===
+                                            "pending"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Pending
+                                    </option>
 
 
-                            <option
-                                value="preparing"
-                                ${
-                                    order.status ===
-                                    "preparing"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Preparing
-                            </option>
+                                    <option
+                                        value="confirmed"
+                                        ${
+                                            order.status ===
+                                            "confirmed"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Confirmed
+                                    </option>
 
 
-                            <option
-                                value="out_for_delivery"
-                                ${
-                                    order.status ===
-                                    "out_for_delivery"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Out for Delivery
-                            </option>
+                                    <option
+                                        value="preparing"
+                                        ${
+                                            order.status ===
+                                            "preparing"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Preparing
+                                    </option>
 
 
-                            <option
-                                value="delivered"
-                                ${
-                                    order.status ===
-                                    "delivered"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Delivered
-                            </option>
+                                    <option
+                                        value="out_for_delivery"
+                                        ${
+                                            order.status ===
+                                            "out_for_delivery"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Out for Delivery
+                                    </option>
 
 
-                            <option
-                                value="cancelled"
-                                ${
-                                    order.status ===
-                                    "cancelled"
-                                        ? "selected"
-                                        : ""
-                                }
-                            >
-                                Cancelled
-                            </option>
-
-                        </select>
-
-                    </td>
+                                    <option
+                                        value="delivered"
+                                        ${
+                                            order.status ===
+                                            "delivered"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Delivered
+                                    </option>
 
 
-                    <td>
+                                    <option
+                                        value="cancelled"
+                                        ${
+                                            order.status ===
+                                            "cancelled"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Cancelled
+                                    </option>
 
-                        <button
-                            class="edit-btn"
-                            onclick="viewOrderDetails(
-                                ${order.id}
-                            )"
-                        >
-                            👁️ View
-                        </button>
+                                </select>
 
-                    </td>
+                            </td>
 
-                </tr>
 
-            `;
+                            <td>
 
-        }).join("");
+                                <button
+                                    class="edit-btn"
+                                    onclick="viewOrderDetails(${Number(
+                                        order.id
+                                    )})"
+                                >
+                                    👁️ View
+                                </button>
+
+                            </td>
+
+                        </tr>
+                    `;
+
+                }
+            )
+            .join("");
 
 }
 
 
-// ============================================
-// ORDER SEARCH
-// ============================================
+// ============================================================
+// SEARCH ORDERS
+// ============================================================
 
 function searchAdminOrders() {
 
@@ -1223,20 +2041,18 @@ function searchAdminOrders() {
             "orderSearch"
         );
 
-
     const filterInput =
         document.getElementById(
             "orderStatusFilter"
         );
 
 
-    if (!searchInput) return;
-
-
     const search =
-        searchInput.value
-            .toLowerCase()
-            .trim();
+        searchInput
+            ? searchInput.value
+                .toLowerCase()
+                .trim()
+            : "";
 
 
     const status =
@@ -1246,54 +2062,62 @@ function searchAdminOrders() {
 
 
     const filtered =
-        orders.filter(order => {
+        orders.filter(
+            function (order) {
 
-            const matchesSearch =
-
-                String(order.id)
-                    .includes(search)
-
-                ||
-
-                (order.customer_name || "")
-                    .toLowerCase()
-                    .includes(search)
-
-                ||
-
-                (order.phone || "")
-                    .toLowerCase()
-                    .includes(search)
-
-                ||
-
-                (order.address || "")
-                    .toLowerCase()
-                    .includes(search);
+                const text =
+                    String(
+                        order.id
+                    ) +
+                    " " +
+                    String(
+                        order.customer_name ||
+                        ""
+                    ) +
+                    " " +
+                    String(
+                        order.phone ||
+                        ""
+                    ) +
+                    " " +
+                    String(
+                        order.address ||
+                        ""
+                    );
 
 
-            const matchesStatus =
-                status === "all"
-                ||
-                order.status === status;
+                const matchesSearch =
+                    text
+                        .toLowerCase()
+                        .includes(
+                            search
+                        );
 
 
-            return (
-                matchesSearch &&
-                matchesStatus
-            );
-
-        });
+                const matchesStatus =
+                    status === "all" ||
+                    order.status === status;
 
 
-    displayOrders(filtered);
+                return (
+                    matchesSearch &&
+                    matchesStatus
+                );
+
+            }
+        );
+
+
+    displayOrders(
+        filtered
+    );
 
 }
 
 
-// ============================================
-// ORDER STATUS FILTER
-// ============================================
+// ============================================================
+// ORDER FILTER
+// ============================================================
 
 function filterAdminOrders() {
 
@@ -1302,9 +2126,9 @@ function filterAdminOrders() {
 }
 
 
-// ============================================
+// ============================================================
 // ORDER STATS
-// ============================================
+// ============================================================
 
 function updateOrderStats() {
 
@@ -1314,89 +2138,78 @@ function updateOrderStats() {
 
     const pending =
         orders.filter(
-            order =>
-                order.status === "pending"
+            function (order) {
+
+                return order.status ===
+                    "pending";
+
+            }
         ).length;
 
 
     const delivery =
         orders.filter(
-            order =>
-                order.status ===
-                "out_for_delivery"
+            function (order) {
+
+                return order.status ===
+                    "out_for_delivery";
+
+            }
         ).length;
 
 
     const delivered =
         orders.filter(
-            order =>
-                order.status ===
-                "delivered"
+            function (order) {
+
+                return order.status ===
+                    "delivered";
+
+            }
         ).length;
 
 
-    const totalElement =
-        document.getElementById(
-            "totalOrders"
-        );
+    setText(
+        "totalOrders",
+        total
+    );
 
+    setText(
+        "pendingOrders",
+        pending
+    );
 
-    const pendingElement =
-        document.getElementById(
-            "pendingOrders"
-        );
+    setText(
+        "deliveryOrders",
+        delivery
+    );
 
-
-    const deliveryElement =
-        document.getElementById(
-            "deliveryOrders"
-        );
-
-
-    const deliveredElement =
-        document.getElementById(
-            "deliveredOrders"
-        );
-
-
-    if (totalElement) {
-        totalElement.textContent = total;
-    }
-
-
-    if (pendingElement) {
-        pendingElement.textContent =
-            pending;
-    }
-
-
-    if (deliveryElement) {
-        deliveryElement.textContent =
-            delivery;
-    }
-
-
-    if (deliveredElement) {
-        deliveredElement.textContent =
-            delivered;
-    }
+    setText(
+        "deliveredOrders",
+        delivered
+    );
 
 }
 
 
-// ============================================
+// ============================================================
 // UPDATE ORDER STATUS
-// ============================================
+// ============================================================
 
-async function updateOrderStatus(id, status) {
+async function updateOrderStatus(
+    id,
+    status
+) {
 
     try {
 
         const response =
-            await fetch(
-                `${ORDERS_API_URL}/${id}/status`,
+            await adminFetch(
+                ORDERS_API_URL +
+                "/" +
+                id +
+                "/status",
                 {
-
                     method: "PUT",
 
                     headers: {
@@ -1406,22 +2219,22 @@ async function updateOrderStatus(id, status) {
 
                     body:
                         JSON.stringify({
-                            status: status
+                            status:
+                                status
                         })
-
                 }
             );
 
 
+        const data =
+            await response.json();
+
+
         if (!response.ok) {
 
-            const error =
-                await response.json();
-
-
             throw new Error(
-                error.message ||
-                "Failed to update order"
+                data.message ||
+                "Failed to update order."
             );
 
         }
@@ -1429,14 +2242,22 @@ async function updateOrderStatus(id, status) {
 
         const order =
             orders.find(
-                item =>
-                    Number(item.id) ===
-                    Number(id)
+                function (item) {
+
+                    return Number(
+                        item.id
+                    ) ===
+                    Number(id);
+
+                }
             );
 
 
         if (order) {
-            order.status = status;
+
+            order.status =
+                status;
+
         }
 
 
@@ -1446,19 +2267,23 @@ async function updateOrderStatus(id, status) {
 
 
         alert(
-            `Order #${id} status updated to ${formatStatus(
-                status
-            )}`
+            "Order #" +
+            id +
+            " status updated."
         );
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Order status error:",
+            error
+        );
 
 
         alert(
-            "❌ " + error.message
+            "Unable to update order.\n\n" +
+            error.message
         );
 
 
@@ -1469,23 +2294,23 @@ async function updateOrderStatus(id, status) {
 }
 
 
-// ============================================
+// ============================================================
 // VIEW ORDER DETAILS
-// ============================================
+// ============================================================
 
-async function viewOrderDetails(id) {
+async function viewOrderDetails(
+    id
+) {
 
     const overlay =
         document.getElementById(
             "orderDetailsOverlay"
         );
 
-
     const content =
         document.getElementById(
             "orderDetailsContent"
         );
-
 
     const subtitle =
         document.getElementById(
@@ -1493,104 +2318,151 @@ async function viewOrderDetails(id) {
         );
 
 
-    if (!overlay || !content) return;
+    if (!overlay || !content) {
+
+        return;
+
+    }
 
 
-    content.innerHTML = `
+    overlay.style.display =
+        "flex";
+
+
+    content.innerHTML =
+        `
         <p style="text-align:center;">
             Loading order...
         </p>
-    `;
-
-
-    overlay.style.display = "flex";
+        `;
 
 
     try {
 
         const response =
-            await fetch(
-                `${ORDERS_API_URL}/${id}`
+            await adminFetch(
+                ORDERS_API_URL +
+                "/" +
+                id
             );
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load order"
-            );
-
-        }
 
 
         const order =
             await response.json();
 
 
+        if (!response.ok) {
+
+            throw new Error(
+                order.message ||
+                "Failed to load order."
+            );
+
+        }
+
+
         if (subtitle) {
 
             subtitle.textContent =
-                `Order #${order.id}`;
+                "Order #" +
+                order.id;
 
         }
 
 
         const items =
-            order.items || [];
+            Array.isArray(
+                order.items
+            )
+                ? order.items
+                : [];
 
 
-        const itemsHTML =
-            items.length > 0
-
-                ? items.map(item => `
-
-                    <div
-                        class="order-item"
-                        style="
-                            display:flex;
-                            justify-content:space-between;
-                            padding:10px 0;
-                            border-bottom:1px solid #eee;
-                        "
-                    >
-
-                        <div>
-
-                            <strong>
-                                ${escapeHTML(
-                                    item.product_name
-                                )}
-                            </strong>
-
-                            <br>
-
-                            <small>
-                                ${item.quantity}
-                                ×
-                                ₹${Number(
-                                    item.price
-                                ).toFixed(2)}
-                            </small>
-
-                        </div>
-
-                        <strong>
-                            ₹${(
-                                Number(item.price) *
-                                Number(item.quantity)
-                            ).toFixed(2)}
-                        </strong>
-
-                    </div>
-
-                `).join("")
-
-                : "<p>No products found.</p>";
+        let itemsHTML =
+            "";
 
 
-        content.innerHTML = `
+        if (
+            items.length ===
+            0
+        ) {
 
-            <div style="margin-bottom:20px;">
+            itemsHTML =
+                "<p>No products found.</p>";
+
+        } else {
+
+            itemsHTML =
+                items
+                    .map(
+                        function (item) {
+
+                            const itemTotal =
+                                Number(
+                                    item.price ||
+                                    0
+                                ) *
+                                Number(
+                                    item.quantity ||
+                                    0
+                                );
+
+
+                            return `
+                                <div
+                                    style="
+                                        display:flex;
+                                        justify-content:space-between;
+                                        padding:10px 0;
+                                        border-bottom:1px solid #eee;
+                                    "
+                                >
+
+                                    <div>
+
+                                        <strong>
+                                            ${escapeHTML(
+                                                item.product_name ||
+                                                ""
+                                            )}
+                                        </strong>
+
+                                        <br>
+
+                                        <small>
+                                            ${
+                                                Number(
+                                                    item.quantity ||
+                                                    0
+                                                )
+                                            }
+                                            ×
+                                            ₹${Number(
+                                                item.price ||
+                                                0
+                                            ).toFixed(2)}
+                                        </small>
+
+                                    </div>
+
+
+                                    <strong>
+                                        ₹${itemTotal.toFixed(2)}
+                                    </strong>
+
+                                </div>
+                            `;
+
+                        }
+                    )
+                    .join("");
+
+        }
+
+
+        content.innerHTML =
+            `
+            <div>
 
                 <h3>
                     Customer Information
@@ -1599,28 +2471,24 @@ async function viewOrderDetails(id) {
                 <p>
                     <strong>Name:</strong>
                     ${escapeHTML(
-                        order.customer_name
+                        order.customer_name ||
+                        ""
                     )}
                 </p>
 
                 <p>
                     <strong>Phone:</strong>
                     ${escapeHTML(
-                        order.phone
+                        order.phone ||
+                        ""
                     )}
                 </p>
 
                 <p>
                     <strong>Address:</strong>
                     ${escapeHTML(
-                        order.address
-                    )}
-                </p>
-
-                <p>
-                    <strong>Payment:</strong>
-                    ${formatPaymentMethod(
-                        order.payment_method
+                        order.address ||
+                        ""
                     )}
                 </p>
 
@@ -1632,7 +2500,7 @@ async function viewOrderDetails(id) {
                 </p>
 
                 <p>
-                    <strong>Order Date:</strong>
+                    <strong>Date:</strong>
                     ${formatDate(
                         order.created_at
                     )}
@@ -1668,38 +2536,38 @@ async function viewOrderDetails(id) {
 
                 <strong>
                     ₹${Number(
-                        order.total
+                        order.total ||
+                        0
                     ).toFixed(2)}
                 </strong>
 
             </div>
-
-        `;
+            `;
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "View order error:",
+            error
+        );
 
 
-        content.innerHTML = `
-
+        content.innerHTML =
+            `
             <p style="text-align:center;">
-
-                ❌ Unable to load order details.
-
+                Unable to load order details.
             </p>
-
-        `;
+            `;
 
     }
 
 }
 
 
-// ============================================
+// ============================================================
 // CLOSE ORDER DETAILS
-// ============================================
+// ============================================================
 
 function closeOrderDetails() {
 
@@ -1710,17 +2578,22 @@ function closeOrderDetails() {
 
 
     if (overlay) {
-        overlay.style.display = "none";
+
+        overlay.style.display =
+            "none";
+
     }
 
 }
 
 
-// ============================================
+// ============================================================
 // CLOSE ORDER DETAILS OUTSIDE
-// ============================================
+// ============================================================
 
-function closeOrderDetailsOutside(event) {
+function closeOrderDetailsOutside(
+    event
+) {
 
     if (
         event.target.id ===
@@ -1734,264 +2607,336 @@ function closeOrderDetailsOutside(event) {
 }
 
 
-// ============================================
+// ============================================================
 // DASHBOARD
-// ============================================
+// ============================================================
 
 function updateDashboard() {
-
-    const productElement =
-        document.getElementById(
-            "dashboardProducts"
-        );
-
-
-    const orderElement =
-        document.getElementById(
-            "dashboardOrders"
-        );
-
-
-    const salesElement =
-        document.getElementById(
-            "dashboardSales"
-        );
-
-
-    if (productElement) {
-
-        productElement.textContent =
-            products.length;
-
-    }
-
-
-    if (orderElement) {
-
-        orderElement.textContent =
-            orders.length;
-
-    }
-
 
     const sales =
         orders
             .filter(
-                order =>
-                    order.status !== "cancelled"
+                function (order) {
+
+                    return order.status !==
+                        "cancelled";
+
+                }
             )
             .reduce(
-                (sum, order) =>
-                    sum +
-                    Number(
-                        order.total || 0
-                    ),
+                function (
+                    total,
+                    order
+                ) {
+
+                    return (
+                        total +
+                        Number(
+                            order.total ||
+                            0
+                        )
+                    );
+
+                },
                 0
             );
 
 
-    if (salesElement) {
+    setText(
+        "dashboardProducts",
+        products.length
+    );
 
-        salesElement.textContent =
-            `₹${sales.toFixed(2)}`;
 
-    }
+    setText(
+        "dashboardOrders",
+        orders.length
+    );
+
+
+    setText(
+        "dashboardSales",
+        "₹" +
+        sales.toFixed(2)
+    );
 
 }
 
 
-// ============================================
-// FORMAT CATEGORY
-// ============================================
+// ============================================================
+// CATEGORY
+// ============================================================
 
-function formatCategory(category) {
+function formatCategory(
+    category
+) {
+
+    const value =
+        String(
+            category ||
+            ""
+        );
+
 
     const categories = {
 
-        groceries: "Groceries",
+        groceries:
+            "Groceries",
 
-        dairy: "Dairy",
+        Groceries:
+            "Groceries",
 
-        snacks: "Snacks",
+        dairy:
+            "Dairy",
 
-        drinks: "Drinks",
+        Dairy:
+            "Dairy",
 
-        personal: "Personal Care",
+        snacks:
+            "Snacks",
 
-        household: "Household"
+        Snacks:
+            "Snacks",
+
+        drinks:
+            "Drinks",
+
+        Beverages:
+            "Beverages",
+
+        beverages:
+            "Beverages",
+
+        personal:
+            "Personal Care",
+
+        "Personal Care":
+            "Personal Care",
+
+        household:
+            "Household",
+
+        Cleaning:
+            "Cleaning"
 
     };
 
 
-    return categories[category]
-        || category
-        || "-";
+    return (
+        categories[value] ||
+        value ||
+        "Other"
+    );
 
 }
 
 
-// ============================================
-// FORMAT STATUS
-// ============================================
+// ============================================================
+// ORDER STATUS TEXT
+// ============================================================
 
-function formatStatus(status) {
+function formatStatus(
+    status
+) {
 
     const statuses = {
 
-        pending: "Pending",
+        pending:
+            "Pending",
 
-        confirmed: "Confirmed",
+        confirmed:
+            "Confirmed",
 
-        preparing: "Preparing",
+        preparing:
+            "Preparing",
 
         out_for_delivery:
             "Out for Delivery",
 
-        delivered: "Delivered",
+        delivered:
+            "Delivered",
 
-        cancelled: "Cancelled"
+        cancelled:
+            "Cancelled"
 
     };
 
 
-    return statuses[status]
-        || status
-        || "Unknown";
+    return (
+        statuses[status] ||
+        status ||
+        "Unknown"
+    );
 
 }
 
 
-// ============================================
-// FORMAT PAYMENT
-// ============================================
+// ============================================================
+// DATE
+// ============================================================
 
-function formatPaymentMethod(method) {
-
-    if (!method) {
-        return "-";
-    }
-
-
-    const value =
-        method.toLowerCase();
-
-
-    if (
-        value === "cod" ||
-        value === "cash on delivery"
-    ) {
-
-        return "💵 Cash on Delivery";
-
-    }
-
-
-    if (value === "upi") {
-
-        return "📱 UPI";
-
-    }
-
-
-    return escapeHTML(method);
-
-}
-
-
-// ============================================
-// FORMAT DATE
-// ============================================
-
-function formatDate(dateString) {
+function formatDate(
+    dateString
+) {
 
     if (!dateString) {
+
         return "-";
+
     }
 
 
     const date =
         new Date(
-            dateString.replace(
+            String(
+                dateString
+            ).replace(
                 " ",
                 "T"
-            ) + "Z"
+            ) +
+            "Z"
         );
 
 
-    if (isNaN(date.getTime())) {
-        return dateString;
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return String(
+            dateString
+        );
+
     }
 
 
     return date.toLocaleString(
         "en-IN",
         {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
+            day:
+                "2-digit",
+
+            month:
+                "short",
+
+            year:
+                "numeric",
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit"
         }
     );
 
 }
 
 
-// ============================================
-// ESCAPE HTML
-// ============================================
+// ============================================================
+// HELPER - SET TEXT
+// ============================================================
 
-function escapeHTML(value) {
+function setText(
+    id,
+    value
+) {
 
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (element) {
+
+        element.textContent =
+            value;
+
+    }
 
 }
 
 
-// ============================================
-// PAGE START
-// ============================================
+// ============================================================
+// HELPER - SET VALUE
+// ============================================================
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+function setValue(
+    id,
+    value
+) {
 
-        // Product form
-
-        const productForm =
-            document.getElementById(
-                "productForm"
-            );
-
-
-        if (productForm) {
-
-            productForm.addEventListener(
-                "submit",
-                saveProduct
-            );
-
-        }
+    const element =
+        document.getElementById(
+            id
+        );
 
 
-        // Load products
+    if (element) {
 
-        loadProducts();
-
-
-        // Load orders
-
-        loadOrders();
-
-
-        // Load shop status
-
-        loadShopStatus();
+        element.value =
+            value ??
+            "";
 
     }
-);
+
+}
+
+
+// ============================================================
+// HELPER - GET VALUE
+// ============================================================
+
+function getValue(
+    id
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    return element
+        ? element.value
+        : "";
+
+}
+
+
+// ============================================================
+// ESCAPE HTML
+// ============================================================
+
+function escapeHTML(
+    value
+) {
+
+    return String(
+        value ??
+        ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
