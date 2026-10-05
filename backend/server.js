@@ -1287,6 +1287,11 @@ app.post(
                 "Create order error:",
                 error
             );
+            
+            console.error(
+    "CREATE ORDER ERROR MESSAGE:",
+    error.message
+);
 
             return sendError(
                 res,
