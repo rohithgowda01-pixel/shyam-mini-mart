@@ -1036,201 +1036,188 @@ app.post(
         try {
 
             const shopSettings =
-                db.prepare(`
-                    SELECT shop_open
-                    FROM settings
-                    WHERE id = 1
-                `).get();
-
+                db.prepare(
+                    "SELECT shop_open FROM settings WHERE id = 1"
+                ).get();
 
             if (
                 shopSettings &&
-                !Boolean(shopSettings.shop_open)
+                Number(shopSettings.shop_open) !== 1
             ) {
-
                 return sendError(
                     res,
                     403,
                     "Shop is currently closed"
                 );
-
             }
-
 
             const customerName =
                 String(
-                    req.body.customer_name ??
-                    req.body.customerName ??
-                    req.body.name ??
+                    req.body.customer_name ||
+                    req.body.customerName ||
+                    req.body.name ||
                     ""
                 ).trim();
 
-
             const phone =
                 String(
-                    req.body.phone ?? ""
+                    req.body.phone ||
+                    req.body.customer_phone ||
+                    ""
                 ).trim();
-
 
             const address =
                 String(
-                    req.body.address ?? ""
+                    req.body.address ||
+                    req.body.customer_address ||
+                    ""
                 ).trim();
-
 
             const items =
                 Array.isArray(req.body.items)
                     ? req.body.items
-                    : Array.isArray(req.body.cart)
-                        ? req.body.cart
-                        : [];
+                    : [];
 
+            if (!customerName) {
+                return sendError(
+                    res,
+                    400,
+                    "Customer name is required"
+                );
+            }
+
+            if (!phone) {
+                return sendError(
+                    res,
+                    400,
+                    "Phone number is required"
+                );
+            }
+
+            if (!address) {
+                return sendError(
+                    res,
+                    400,
+                    "Delivery address is required"
+                );
+            }
 
             if (items.length === 0) {
-
                 return sendError(
                     res,
                     400,
                     "Order items are required"
                 );
-
             }
 
-
             let total = 0;
-
             const preparedItems = [];
-
 
             for (const item of items) {
 
                 const productId =
                     Number(
-                        item.product_id ??
-                        item.productId ??
+                        item.product_id ||
+                        item.productId ||
                         item.id
                     );
 
-
                 const quantity =
                     Number(
-                        item.quantity ??
-                        item.qty ??
+                        item.quantity ||
+                        item.qty ||
                         1
                     );
 
-
                 if (
                     !Number.isInteger(productId) ||
-                    !Number.isInteger(quantity) ||
-                    quantity <= 0
+                    productId <= 0
                 ) {
-
                     return sendError(
                         res,
                         400,
-                        "Invalid order item"
+                        "Invalid product ID"
                     );
-
                 }
 
+                if (
+                    !Number.isInteger(quantity) ||
+                    quantity <= 0
+                ) {
+                    return sendError(
+                        res,
+                        400,
+                        "Invalid quantity"
+                    );
+                }
 
                 const product =
-                    db.prepare(`
-                        SELECT *
-                        FROM products
-                        WHERE id = ?
-                    `).get(productId);
-
+                    db.prepare(
+                        "SELECT * FROM products WHERE id = ?"
+                    ).get(productId);
 
                 if (!product) {
-
                     return sendError(
                         res,
                         400,
                         "One of the selected products no longer exists"
                     );
-
                 }
 
-
                 if (
-                    String(product.stock)
+                    String(product.stock || "")
                         .toLowerCase() !== "available"
                 ) {
-
                     return sendError(
                         res,
                         400,
-                        product.name +
+                        String(product.name || "Product") +
                         " is currently unavailable"
                     );
-
                 }
 
+                const productPrice =
+                    Number(product.price || 0);
 
                 const itemTotal =
-                    Number(product.price) *
-                    quantity;
-
+                    productPrice * quantity;
 
                 total += itemTotal;
 
-
                 preparedItems.push({
-                    productId: product.id,
-                    name: product.name,
+                    productId: Number(product.id),
+                    name: String(product.name || ""),
                     size: String(product.size || ""),
-                    price: Number(product.price),
-                    quantity: quantity
+                    price: Number(productPrice),
+                    quantity: Number(quantity)
                 });
-
             }
 
+            total = Number(total);
 
             const createOrder =
                 db.transaction(() => {
 
                     const orderResult =
-                        db.prepare(`
-                            INSERT INTO orders
-                            (
-                                customer_name,
-                                phone,
-                                address,
-                                total,
-                                status
-                            )
-                            VALUES (?, ?, ?, ?, ?)
-                        `).run(
-                            customerName,
-                            phone,
-                            address,
-                            total,
+                        db.prepare(
+                            "INSERT INTO orders (customer_name, phone, address, total, status) VALUES (?, ?, ?, ?, ?)"
+                        ).run(
+                            String(customerName),
+                            String(phone),
+                            String(address),
+                            Number(total),
                             "pending"
                         );
-
 
                     const orderId =
                         Number(
                             orderResult.lastInsertRowid
                         );
 
-
                     const insertItem =
-                        db.prepare(`
-                            INSERT INTO order_items
-                            (
-                                order_id,
-                                product_id,
-                                product_name,
-                                size,
-                                price,
-                                quantity
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        `);
-
+                        db.prepare(
+                            "INSERT INTO order_items (order_id, product_id, product_name, size, price, quantity) VALUES (?, ?, ?, ?, ?, ?)"
+                        );
 
                     for (
                         const item
@@ -1238,47 +1225,36 @@ app.post(
                     ) {
 
                         insertItem.run(
-                            orderId,
-                            item.productId,
-                            item.name,
-                            item.size,
-                            item.price,
-                            item.quantity
+                            Number(orderId),
+                            Number(item.productId),
+                            String(item.name || ""),
+                            String(item.size || ""),
+                            Number(item.price || 0),
+                            Number(item.quantity)
                         );
-
                     }
 
-
                     return orderId;
-
                 });
 
-
             const order =
-                db.prepare(`
-                    SELECT *
-                    FROM orders
-                    WHERE id = ?
-                `).get(createOrder);
-
+                db.prepare(
+                    "SELECT * FROM orders WHERE id = ?"
+                ).get(Number(createOrder));
 
             const orderItems =
-                db.prepare(`
-                    SELECT *
-                    FROM order_items
-                    WHERE order_id = ?
-                    ORDER BY id ASC
-                `).all(createOrder);
+                db.prepare(
+                    "SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC"
+                ).all(Number(createOrder));
 
-
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 message: "Order placed successfully",
                 order: {
                     ...order,
                     items: orderItems
                 },
-                orderId: createOrder
+                orderId: Number(createOrder)
             });
 
         } catch (error) {
@@ -1287,23 +1263,20 @@ app.post(
                 "Create order error:",
                 error
             );
-            
+
             console.error(
-    "CREATE ORDER ERROR MESSAGE:",
-    error.message
-);
+                "CREATE ORDER ERROR MESSAGE:",
+                String(error.message || error)
+            );
 
             return sendError(
                 res,
                 500,
                 "Failed to create order"
             );
-
         }
-
     }
 );
-
 
 /* =========================================================
    GET ALL ORDERS
