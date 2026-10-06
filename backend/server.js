@@ -1180,7 +1180,7 @@ app.post(
                 preparedItems.push({
                     productId: product.id,
                     name: product.name,
-                    size: product.size,
+                    size: String(product.size || ""),
                     price: Number(product.price),
                     quantity: quantity
                 });
