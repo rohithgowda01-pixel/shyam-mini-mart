@@ -931,25 +931,17 @@ function closeCheckoutOutside(event) {
 async function placeOrder(event) {
 
     if (event) {
-
         event.preventDefault();
-
     }
 
     if (cart.length === 0) {
-
         alert("Your cart is empty.");
-
         return;
-
     }
 
     if (!shopOpen) {
-
         alert("Shop is currently closed.");
-
         return;
-
     }
 
     var nameElement =
@@ -985,66 +977,38 @@ async function placeOrder(event) {
             : "";
 
     if (!customerName) {
-
         alert("Please enter your name.");
-
         return;
-
     }
 
     if (!customerPhone) {
-
         alert("Please enter your phone number.");
-
         return;
-
     }
 
     if (!/^[0-9]{10}$/.test(customerPhone)) {
-
-        alert(
-            "Please enter a valid 10-digit phone number."
-        );
-
+        alert("Please enter a valid 10-digit phone number.");
         return;
-
     }
 
     if (!customerAddress) {
-
-        alert(
-            "Please enter your delivery address."
-        );
-
+        alert("Please enter your delivery address.");
         return;
-
     }
 
     if (!paymentMethod) {
-
-        alert(
-            "Please select a payment method."
-        );
-
+        alert("Please select a payment method.");
         return;
-
     }
 
     var orderItems =
         cart.map(function (item) {
 
             return {
-
                 product_id: Number(item.id),
-
-                name: String(item.name),
-
-                price: Number(item.price),
-
+                product_name: String(item.name),
                 quantity: Number(item.quantity),
-
-                size: String(item.size || "")
-
+                price: Number(item.price)
             };
 
         });
@@ -1056,15 +1020,15 @@ async function placeOrder(event) {
 
         customer_name: customerName,
 
-        customer_phone: customerPhone,
+        phone: customerPhone,
 
-        customer_address: customerAddress,
+        address: customerAddress,
 
         payment_method: paymentMethod,
 
-        items: orderItems,
+        total: Number(totalAmount),
 
-        total_amount: totalAmount
+        items: orderItems
 
     };
 
@@ -1084,16 +1048,20 @@ async function placeOrder(event) {
                 }
             );
 
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to place order"
-            );
-
-        }
-
         var data =
             await response.json();
+
+        if (!response.ok) {
+
+    console.log("BACKEND ORDER RESPONSE:", data);
+
+    throw new Error(
+        data.message ||
+        data.error ||
+        "Failed to create order"
+    );
+
+}
 
         lastOrderId =
             data.order_id ||
@@ -1158,9 +1126,7 @@ async function placeOrder(event) {
             document.getElementById("checkoutForm");
 
         if (form) {
-
             form.reset();
-
         }
 
     } catch (error) {
@@ -1171,6 +1137,7 @@ async function placeOrder(event) {
         );
 
         alert(
+            error.message ||
             "Unable to place order right now. Please try again."
         );
 
@@ -1474,6 +1441,23 @@ function renderOrderTracking(order) {
 
     result.innerHTML = html;
 
+}
+function updateShopStatusUI() {
+
+    var statusElement = document.getElementById("shopStatus");
+
+    if (!statusElement) {
+        console.error("shopStatus element not found");
+        return;
+    }
+
+    if (shopOpen) {
+        statusElement.textContent = "🟢 Shop Open";
+        statusElement.className = "shop-status open";
+    } else {
+        statusElement.textContent = "🔴 Shop Closed";
+        statusElement.className = "shop-status closed";
+    }
 }
 
 
