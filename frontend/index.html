@@ -1,499 +1,208 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Village Mini Mart</title>
-
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#087f4b">
+    <title>SmartPick Mini Supermarket</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-  <!-- ================= HEADER ================= -->
-  <header class="main-header">
+<header class="main-header">
     <div class="header-inner">
-
-      <div class="logo">
-        <span class="logo-icon">🛒</span>
-        <div>
-          <h1>Village Mart</h1>
-          <p>Your Local Store, Just a Click Away</p>
-        </div>
-      </div>
-
-      <div class="header-actions">
-
-        <button class="track-btn" onclick="openTrackOrder()">
-          📦 Track Order
-        </button>
-
-        <button class="cart-btn" onclick="openCart()">
-          🛒 Cart
-          <span id="cartCount">0</span>
-        </button>
-
-      </div>
-
-    </div>
-  </header>
-
-
-  <!-- ================= HERO ================= -->
-  <section class="hero">
-
-    <div class="hero-content">
-
-      <h2>Welcome to Village Mart</h2>
-
-      <p>
-        Fresh groceries, daily essentials, snacks, beverages and more —
-        all at your convenience. Shop from Village Mart and get your
-        essentials delivered to your doorstep.
-      </p>
-
-      <div class="shop-status-wrapper">
-
-        <span id="shopStatus" class="shop-status">
-          Checking shop status...
-        </span>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- ================= SEARCH ================= -->
-  <section class="shop-section">
-
-    <div class="search-box">
-
-      <input
-        type="text"
-        id="productSearch"
-        placeholder="🔍 Search for products..."
-        oninput="searchProducts()"
-      />
-
-    </div>
-
-
-    <!-- ================= CATEGORIES ================= -->
-    <div class="categories">
-
-      <button
-        class="category-btn active"
-        onclick="filterCategory('all', this)"
-      >
-        All
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('groceries', this)"
-      >
-        🛒 Groceries
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('dairy', this)"
-      >
-        🥛 Dairy
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('snacks', this)"
-      >
-        🍪 Snacks
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('drinks', this)"
-      >
-        🥤 Drinks
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('personal', this)"
-      >
-        🧴 Personal Care
-      </button>
-
-      <button
-        class="category-btn"
-        onclick="filterCategory('household', this)"
-      >
-        🏠 Household
-      </button>
-
-    </div>
-
-
-    <!-- ================= PRODUCTS ================= -->
-    <div class="products-header">
-
-      <h2>Products</h2>
-
-      <p id="productResultText">
-        Loading products...
-      </p>
-
-    </div>
-
-    <div id="productGrid" class="product-grid"></div>
-
-  </section>
-
-
-  <!-- ================= CART OVERLAY ================= -->
-  <div
-    id="cartOverlay"
-    class="overlay"
-    onclick="closeCartOutside(event)"
-  >
-
-    <div class="side-panel cart-panel">
-
-      <div class="panel-header">
-
-        <h2>🛒 Your Cart</h2>
-
-        <button
-          class="close-btn"
-          onclick="closeCart()"
-          type="button"
-        >
-          ×
-        </button>
-
-      </div>
-
-      <div id="cartItems" class="cart-items"></div>
-
-      <div class="cart-footer">
-
-        <div class="cart-total-row">
-
-          <span>Total</span>
-
-          <strong>
-            ₹<span id="cartTotal">0.00</span>
-          </strong>
-
-        </div>
-
-        <button
-          class="checkout-btn"
-          onclick="openCheckout()"
-          type="button"
-        >
-          Proceed to Checkout
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- ================= CHECKOUT OVERLAY ================= -->
-  <div
-    id="checkoutOverlay"
-    class="overlay"
-    onclick="closeCheckoutOutside(event)"
-  >
-
-    <div class="checkout-panel">
-
-      <div class="panel-header">
-
-        <h2>🧾 Checkout</h2>
-
-        <button
-          class="close-btn"
-          onclick="closeCheckout()"
-          type="button"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <form
-        id="checkoutForm"
-        onsubmit="placeOrder(event)"
-      >
-
-        <div class="form-group">
-
-          <label for="customerName">
-            Full Name
-          </label>
-
-          <input
-            type="text"
-            id="customerName"
-            placeholder="Enter your name"
-            required
-          />
-
-        </div>
-
-
-        <div class="form-group">
-
-          <label for="customerPhone">
-            Phone Number
-          </label>
-
-          <input
-            type="tel"
-            id="customerPhone"
-            placeholder="Enter 10-digit mobile number"
-            maxlength="10"
-            pattern="[0-9]{10}"
-            required
-          />
-
-        </div>
-
-
-        <div class="form-group">
-
-          <label for="customerAddress">
-            Delivery Address
-          </label>
-
-          <textarea
-            id="customerAddress"
-            rows="4"
-            placeholder="Enter your complete delivery address"
-            required
-          ></textarea>
-
-        </div>
-
-
-        <div class="form-group">
-
-          <label for="paymentMethod">
-            Payment Method
-          </label>
-
-          <select id="paymentMethod" required>
-
-            <option value="">
-              Select payment method
-            </option>
-
-            <option value="cod">
-              Cash on Delivery
-            </option>
-
-            <option value="upi">
-              UPI
-            </option>
-
-          </select>
-
-        </div>
-
-
-        <div class="checkout-total">
-
-          <span>Order Total</span>
-
-          <strong>
-            ₹<span id="checkoutTotal">0.00</span>
-          </strong>
-
-        </div>
-
-
-        <button
-          class="place-order-btn"
-          type="submit"
-        >
-          Place Order
-        </button>
-
-      </form>
-
-    </div>
-
-  </div>
-
-
-  <!-- ================= ORDER SUCCESS ================= -->
-  <div
-    id="successOverlay"
-    class="overlay"
-  >
-
-    <div class="success-panel">
-
-      <div class="success-icon">
-        ✓
-      </div>
-
-      <h2>Order Placed Successfully!</h2>
-
-      <p>
-        Thank you for shopping with Village Mart.
-      </p>
-
-      <div class="order-id-box">
-
-        <span>Your Order ID</span>
-
-        <strong id="successOrderId">
-          -
-        </strong>
-
-      </div>
-
-
-      <div class="success-actions">
-
-        <button
-          class="track-success-btn"
-          onclick="trackSuccessfulOrder()"
-          type="button"
-        >
-          📦 Track Order
-        </button>
-
-        <button
-          class="continue-btn"
-          onclick="closeSuccess()"
-          type="button"
-        >
-          Continue Shopping
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- ================= TRACK ORDER OVERLAY ================= -->
-  <div
-    id="trackOrderOverlay"
-    class="overlay"
-    onclick="closeTrackOrderOutside(event)"
-  >
-
-    <div class="tracking-panel">
-
-      <div class="panel-header">
-
-        <h2>📦 Track Your Order</h2>
-
-        <button
-          class="close-btn"
-          onclick="closeTrackOrder()"
-          type="button"
-        >
-          ×
-        </button>
-
-      </div>
-
-
-      <div class="tracking-content">
-
-        <p class="tracking-description">
-          Enter your Order ID to check the current status of your order.
-        </p>
-
-
-        <form
-          id="trackOrderForm"
-          onsubmit="trackOrder(event)"
-        >
-
-          <div class="tracking-input-row">
-
-            <input
-              type="number"
-              id="trackOrderId"
-              placeholder="Enter Order ID"
-              min="1"
-              required
-            />
-
-            <button
-              type="submit"
-              class="track-submit-btn"
-            >
-              Track
+        <a class="logo" href="#" aria-label="SmartPick home">
+            <span class="logo-icon">🛒</span>
+            <div>
+                <h1>SmartPick</h1>
+                <p>MINI SUPERMARKET</p>
+            </div>
+        </a>
+
+        <div class="header-actions">
+            <button class="track-btn" onclick="openTrackOrder()" type="button">📦 Track Order</button>
+            <button class="cart-btn" onclick="openCart()" type="button">
+                🛒 Cart <span id="cartCount">0</span>
             </button>
+        </div>
+    </div>
+</header>
 
-          </div>
+<main>
+    <section class="hero">
+        <div class="hero-content">
+            <span class="hero-label">YOUR NEIGHBOURHOOD SUPERMARKET</span>
+            <h2>Smart shopping.<br><span>Happy savings!</span></h2>
+            <p>Everyday groceries, fresh essentials, snacks and more — order from home and get them delivered to your doorstep.</p>
 
+            <div class="hero-offer">
+                <span class="offer-number">15% OFF</span>
+                <div>
+                    <strong>Save on your order!</strong>
+                    <p>Your discount is calculated automatically at checkout.</p>
+                </div>
+            </div>
+
+            <p class="delivery-message">🚚 FREE DELIVERY ACROSS DODDABELAVANGALA</p>
+
+            <div class="shop-status-wrapper">
+                <span id="shopStatus" class="shop-status">Checking shop status...</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="benefits">
+        <div class="benefit"><span>💰</span><div><strong>15% OFF</strong><small>Automatic savings</small></div></div>
+        <div class="benefit"><span>🚚</span><div><strong>Free Delivery</strong><small>Doddabelavangala</small></div></div>
+        <div class="benefit"><span>🛍️</span><div><strong>Easy Ordering</strong><small>Shop from home</small></div></div>
+    </section>
+
+    <section class="shop-section" id="shop">
+        <div class="section-heading">
+            <span class="eyebrow">SHOP YOUR FAVOURITES</span>
+            <h2>Everything you need, in one place</h2>
+            <p>Find your daily essentials at SmartPick.</p>
+        </div>
+
+        <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="productSearch" placeholder="Search rice, milk, snacks and more..." oninput="searchProducts()">
+        </div>
+
+        <div class="categories">
+            <button class="category-btn active" onclick="filterCategory('all', this)" type="button">All Products</button>
+            <button class="category-btn" onclick="filterCategory('groceries', this)" type="button">🌾 Groceries</button>
+            <button class="category-btn" onclick="filterCategory('dairy', this)" type="button">🥛 Dairy</button>
+            <button class="category-btn" onclick="filterCategory('snacks', this)" type="button">🍪 Snacks</button>
+            <button class="category-btn" onclick="filterCategory('drinks', this)" type="button">🥤 Drinks</button>
+            <button class="category-btn" onclick="filterCategory('personal', this)" type="button">🧴 Personal Care</button>
+            <button class="category-btn" onclick="filterCategory('household', this)" type="button">🏠 Household</button>
+        </div>
+
+        <div class="products-header">
+            <h2>Popular products</h2>
+            <p id="productResultText">Loading products...</p>
+        </div>
+        <div id="productGrid" class="product-grid"></div>
+    </section>
+</main>
+
+<div id="cartOverlay" class="overlay" onclick="closeCartOutside(event)">
+    <div class="side-panel cart-panel">
+        <div class="panel-header">
+            <h2>🛒 Your Cart</h2>
+            <button class="close-btn" onclick="closeCart()" type="button" aria-label="Close cart">×</button>
+        </div>
+
+        <div id="cartItems" class="cart-items"></div>
+
+        <div class="cart-footer">
+            <div class="cart-total-row"><span>Subtotal</span><strong>₹<span id="cartTotal">0.00</span></strong></div>
+            <div class="discount-row"><span>🎉 Discount (15%)</span><strong>−₹<span id="cartDiscount">0.00</span></strong></div>
+            <div class="cart-total-row final-total"><span>You pay</span><strong>₹<span id="cartFinalTotal">0.00</span></strong></div>
+            <p class="free-delivery-note">🚚 Free delivery across Doddabelavangala</p>
+            <button class="checkout-btn" onclick="openCheckout()" type="button">Proceed to Checkout →</button>
+        </div>
+    </div>
+</div>
+
+<div id="checkoutOverlay" class="overlay" onclick="closeCheckoutOutside(event)">
+    <div class="checkout-panel">
+        <div class="panel-header">
+            <h2>🧾 Checkout</h2>
+            <button class="close-btn" onclick="closeCheckout()" type="button" aria-label="Close checkout">×</button>
+        </div>
+
+        <form id="checkoutForm" onsubmit="placeOrder(event)">
+            <div class="form-group">
+                <label for="customerName">Full Name</label>
+                <input type="text" id="customerName" placeholder="Enter your name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="customerPhone">Phone Number</label>
+                <input type="tel" id="customerPhone" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="customerAddress">Delivery Address</label>
+                <textarea id="customerAddress" rows="4" placeholder="House number, street, village..." required></textarea>
+                <small class="delivery-note">Free delivery is available across Doddabelavangala.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="paymentMethod">Payment Method</label>
+                <select id="paymentMethod" required>
+                    <option value="">Select payment method</option>
+                    <option value="cod">Cash on Delivery</option>
+                    <option value="upi">UPI</option>
+                </select>
+            </div>
+
+            <div class="checkout-summary">
+                <div><span>Subtotal</span><strong>₹<span id="checkoutSubtotal">0.00</span></strong></div>
+                <div class="discount-row"><span>15% discount</span><strong>−₹<span id="checkoutDiscount">0.00</span></strong></div>
+                <div><span>Delivery</span><strong class="free-text">FREE</strong></div>
+                <div class="summary-final"><span>Total to pay</span><strong>₹<span id="checkoutTotal">0.00</span></strong></div>
+            </div>
+
+            <button class="place-order-btn" id="placeOrderButton" type="submit">Place My Order</button>
+            <p class="secure-note">Your savings are calculated automatically.</p>
         </form>
-
-
-        <div id="trackingResult"></div>
-
-      </div>
-
     </div>
+</div>
 
-  </div>
+<div id="successOverlay" class="overlay">
+    <div class="success-panel">
+        <div class="success-icon">✓</div>
+        <h2>Order placed successfully!</h2>
+        <p>Thank you for choosing SmartPick Mini Supermarket.</p>
+        <div class="order-id-box"><span>Your Order ID</span><strong id="successOrderId">-</strong></div>
+        <p class="success-saving">Enjoy your 15% savings and free delivery!</p>
+        <div class="success-actions">
+            <button class="track-success-btn" onclick="trackSuccessfulOrder()" type="button">📦 Track My Order</button>
+            <button class="continue-btn" onclick="closeSuccess()" type="button">Continue Shopping</button>
+        </div>
+    </div>
+</div>
 
+<div id="trackOrderOverlay" class="overlay" onclick="closeTrackOrderOutside(event)">
+    <div class="tracking-panel">
+        <div class="panel-header">
+            <h2>📦 Track Your Order</h2>
+            <button class="close-btn" onclick="closeTrackOrder()" type="button" aria-label="Close tracking">×</button>
+        </div>
 
-  <!-- ================= FOOTER ================= -->
-  <footer class="footer">
+        <div class="tracking-content">
+            <p class="tracking-description">Enter the Order ID you received after placing your order.</p>
+            <form id="trackOrderForm" onsubmit="trackOrder(event)">
+                <div class="tracking-input-row">
+                    <input type="number" id="trackOrderId" placeholder="Enter Order ID" min="1" required>
+                    <button type="submit" class="track-submit-btn">Track</button>
+                </div>
+            </form>
+            <div id="trackingResult"></div>
+        </div>
+    </div>
+</div>
 
+<footer class="footer">
     <div class="footer-content">
-
-      <div>
-
-        <h3>Village Mart</h3>
-
-        <p>
-          Your local store for everyday essentials.
-        </p>
-
-      </div>
-
-
-      <div>
-
-        <p>🛒 Quality Products</p>
-
-        <p>🚚 Home Delivery</p>
-
-        <p>📦 Easy Ordering</p>
-
-      </div>
-
+        <div>
+            <h3>🛒 SmartPick Mini Supermarket</h3>
+            <p>Your local store for everyday essentials.</p>
+            <p>📍 Serving Doddabelavangala</p>
+        </div>
+        <div>
+            <p>💚 15% automatic discount</p>
+            <p>🚚 Free local delivery</p>
+            <p>📦 Easy order tracking</p>
+        </div>
     </div>
+    <div class="footer-bottom">© 2026 SmartPick Mini Supermarket. All rights reserved.</div>
+</footer>
 
-
-    <div class="footer-bottom">
-
-      © 2026 Village Mart. All rights reserved.
-
-    </div>
-
-  </footer>
-
-
-  <!-- ================= JAVASCRIPT ================= -->
-  <script src="script.js"></script>
-
+<script src="script.js"></script>
 </body>
 </html>

@@ -640,16 +640,19 @@ function updateCartCount() {
 // CART TOTAL
 // =====================================================
 
+
 function calculateCartTotal() {
-
     return cart.reduce(function (total, item) {
-
-        return total +
-            Number(item.price) *
-            Number(item.quantity);
-
+        return total + Number(item.price) * Number(item.quantity);
     }, 0);
+}
 
+function calculateDiscount() {
+    return Math.round(calculateCartTotal() * 15) / 100;
+}
+
+function calculateFinalTotal() {
+    return Math.max(0, calculateCartTotal() - calculateDiscount());
 }
 
 
@@ -710,18 +713,17 @@ function closeCartOutside(event) {
 // RENDER CART
 // =====================================================
 
+
 function renderCart() {
 
-    var cartItems =
-        document.getElementById("cartItems");
-
-    var cartTotal =
-        document.getElementById("cartTotal");
+    var cartItems = document.getElementById("cartItems");
+    var cartTotal = document.getElementById("cartTotal");
 
     if (!cartItems) {
         return;
     }
 
+    // If cart is empty
     if (cart.length === 0) {
 
         cartItems.innerHTML =
@@ -729,121 +731,131 @@ function renderCart() {
             '<div class="empty-cart-icon">🛒</div>' +
             '<h3>Your cart is empty</h3>' +
             '<p>Add some products to continue.</p>' +
-            "</div>";
+            '</div>';
 
         if (cartTotal) {
-
             cartTotal.textContent = "0.00";
+        }
 
+        var discountElement =
+            document.getElementById("cartDiscount");
+
+        if (discountElement) {
+            discountElement.textContent = "0.00";
+        }
+
+        var finalElement =
+            document.getElementById("cartFinalTotal");
+
+        if (finalElement) {
+            finalElement.textContent = "0.00";
         }
 
         return;
-
     }
 
+    // If cart contains products
     var html = "";
 
     cart.forEach(function (item) {
 
         var itemTotal =
-            Number(item.price) *
-            Number(item.quantity);
+            Number(item.price) * Number(item.quantity);
 
         var imageHTML = "";
 
         if (item.image) {
-
             imageHTML =
                 '<img src="' +
                 escapeHTML(item.image) +
                 '" alt="' +
                 escapeHTML(item.name) +
                 '">';
-
         } else {
-
             imageHTML = "🛒";
-
         }
 
         var sizeHTML = "";
 
         if (item.size) {
-
             sizeHTML =
                 "<small>" +
                 escapeHTML(item.size) +
                 "</small>";
-
         }
 
         html +=
             '<div class="cart-item">' +
+                '<div class="cart-item-image">' +
+                    imageHTML +
+                '</div>' +
 
-            '<div class="cart-item-image">' +
-            imageHTML +
-            "</div>" +
+                '<div class="cart-item-info">' +
+                    '<h4>' +
+                        escapeHTML(item.name) +
+                    '</h4>' +
 
-            '<div class="cart-item-info">' +
+                    sizeHTML +
 
-            "<h4>" +
-            escapeHTML(item.name) +
-            "</h4>" +
+                    '<p>₹' +
+                        Number(item.price).toFixed(2) +
+                    '</p>' +
 
-            sizeHTML +
+                    '<div class="quantity-controls">' +
+                        '<button onclick="decreaseQuantity(' +
+                            Number(item.id) +
+                        ')" type="button">−</button>' +
 
-            "<p>" +
-            "₹" +
-            Number(item.price).toFixed(2) +
-            "</p>" +
+                        '<span>' +
+                            Number(item.quantity) +
+                        '</span>' +
 
-            '<div class="quantity-controls">' +
+                        '<button onclick="increaseQuantity(' +
+                            Number(item.id) +
+                        ')" type="button">+</button>' +
+                    '</div>' +
+                '</div>' +
 
-            '<button onclick="decreaseQuantity(' +
-            Number(item.id) +
-            ')" type="button">−</button>' +
+                '<div class="cart-item-right">' +
+                    '<strong>₹' +
+                        itemTotal.toFixed(2) +
+                    '</strong>' +
 
-            "<span>" +
-            Number(item.quantity) +
-            "</span>" +
-
-            '<button onclick="increaseQuantity(' +
-            Number(item.id) +
-            ')" type="button">+</button>' +
-
-            "</div>" +
-
-            "</div>" +
-
-            '<div class="cart-item-right">' +
-
-            "<strong>" +
-            "₹" +
-            itemTotal.toFixed(2) +
-            "</strong>" +
-
-            '<button class="remove-cart-btn" ' +
-            'onclick="removeFromCart(' +
-            Number(item.id) +
-            ')" type="button">' +
-            "Remove" +
-            "</button>" +
-
-            "</div>" +
-
-            "</div>";
-
+                    '<button class="remove-cart-btn" ' +
+                        'onclick="removeFromCart(' +
+                            Number(item.id) +
+                        ')" type="button">' +
+                        'Remove' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
     });
 
     cartItems.innerHTML = html;
 
+    // Update subtotal
     if (cartTotal) {
-
         cartTotal.textContent =
             calculateCartTotal().toFixed(2);
-
     }
 
+    // Update 15% discount
+    var discountElement =
+        document.getElementById("cartDiscount");
+
+    if (discountElement) {
+        discountElement.textContent =
+            calculateDiscount().toFixed(2);
+    }
+
+    // Update final amount after discount
+    var finalElement =
+        document.getElementById("cartFinalTotal");
+
+    if (finalElement) {
+        finalElement.textContent =
+            calculateFinalTotal().toFixed(2);
+    }
 }
 
 
@@ -1251,72 +1263,21 @@ function closeTrackOrderOutside(event) {
 // TRACK ORDER
 // =====================================================
 
-async function trackOrder() {
 
-    var input =
-        document.getElementById("trackOrderId");
+async function trackOrder(event) {
 
-    var result =
-        document.getElementById("trackingResult");
+    if (event) {
+        event.preventDefault();
+    }
+
+    var input = document.getElementById("trackOrderId");
+    var result = document.getElementById("trackingResult");
 
     if (!input || !result) {
         return;
     }
 
-    var orderId =
-        input.value.trim();
-
-    if (!orderId) {
-
-        alert(
-            "Please enter your order ID."
-        );
-
-        return;
-
-    }
-
-    result.innerHTML =
-        '<div class="loading">Loading order...</div>';
-
-    try {
-
-        var response =
-            await fetch(
-                ORDERS_API_URL +
-                "/" +
-                encodeURIComponent(orderId)
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Order not found"
-            );
-
-        }
-
-        var order =
-            await response.json();
-
-        renderOrderTracking(order);
-
-    } catch (error) {
-
-        console.error(
-            "Tracking error:",
-            error
-        );
-
-        result.innerHTML =
-            '<div class="empty-message">' +
-            '<h3>Order not found</h3>' +
-            '<p>Please check your Order ID and try again.</p>' +
-            "</div>";
-
-    }
-
-}
+    // Keep the rest of your existing trackOrder function below this point.
 
 
 // =====================================================
